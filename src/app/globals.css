@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: #0a0a0f;
+  color: #f8fafc;
+  min-height: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.text-shadow {
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.6);
+}
+
+.glass {
+  background: rgba(20, 20, 30, 0.55);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #a78bfa, #f5c518, #a78bfa);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Portrait stage: scales the 1080x1920 canvas to fit any viewport */
+.stage {
+  width: 100vw;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.5);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+input,
+select,
+textarea {
+  color-scheme: dark;
+}

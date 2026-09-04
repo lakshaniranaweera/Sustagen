@@ -1,0 +1,8 @@
+node_modules
+.next
+out
+.env*.local
+# runtime data & uploads are persistent — keep them out of VCS but present at runtime
+/data
+/public/uploads
+next-env.d.ts
