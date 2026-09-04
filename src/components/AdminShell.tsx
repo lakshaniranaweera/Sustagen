@@ -2,8 +2,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { api } from "@/lib/client";
+import { loadState, verifyPassword } from "@/lib/store";
+import { GAMES } from "@/lib/games";
 import { ToastProvider, useToast, Spinner } from "./ui";
+
+const SESSION_KEY = "admin-authed";
 
 function LoginForm({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState("");
@@ -17,10 +20,14 @@ function LoginForm({ onLogin }: { onLogin: () => void }) {
           setBusy(true);
           setErr(null);
           try {
-            await api("/api/admin/login", {
-              method: "POST",
-              body: JSON.stringify({ password }),
-            });
+            const state = await loadState();
+            const ok = await verifyPassword(state, password);
+            if (!ok) throw new Error("Incorrect password");
+            try {
+              sessionStorage.setItem(SESSION_KEY, "1");
+            } catch {
+              /* ignore */
+            }
             onLogin();
           } catch (e: any) {
             setErr(e.message);
@@ -60,17 +67,17 @@ function LoginForm({ onLogin }: { onLogin: () => void }) {
   );
 }
 
-function Nav() {
+function Nav({ onLogout }: { onLogout: () => void }) {
   const path = usePathname();
   const toast = useToast();
   const links = [
     { href: "/admin", label: "Overview" },
-    { href: "/admin/game-a", label: "Spin the Wheel" },
-    { href: "/admin/game-b", label: "Cognitive Test" },
+    ...GAMES.map((g) => ({ href: g.adminPath, label: g.name })),
+    { href: "/admin/reports", label: "Reports" },
   ];
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-black/60 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center gap-2 px-6 py-4">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-6 py-4">
         <span className="mr-4 text-lg font-black uppercase text-white">
           ⚙ Admin
         </span>
@@ -95,10 +102,14 @@ function Nav() {
             View Site ↗
           </Link>
           <button
-            onClick={async () => {
-              await api("/api/admin/login", { method: "DELETE" });
+            onClick={() => {
+              try {
+                sessionStorage.removeItem(SESSION_KEY);
+              } catch {
+                /* ignore */
+              }
               toast("Logged out");
-              location.href = "/admin";
+              onLogout();
             }}
             className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white/80 hover:bg-white/20"
           >
@@ -113,9 +124,11 @@ function Nav() {
 function Gate({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState<boolean | null>(null);
   useEffect(() => {
-    api<{ authed: boolean }>("/api/admin/login")
-      .then((r) => setAuthed(r.authed))
-      .catch(() => setAuthed(false));
+    try {
+      setAuthed(sessionStorage.getItem(SESSION_KEY) === "1");
+    } catch {
+      setAuthed(false);
+    }
   }, []);
   if (authed === null)
     return (
@@ -126,7 +139,7 @@ function Gate({ children }: { children: React.ReactNode }) {
   if (!authed) return <LoginForm onLogin={() => setAuthed(true)} />;
   return (
     <div className="min-h-screen bg-[#08080d] text-white">
-      <Nav />
+      <Nav onLogout={() => setAuthed(false)} />
       <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
     </div>
   );

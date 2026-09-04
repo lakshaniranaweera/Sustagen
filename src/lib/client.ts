@@ -1,23 +1,10 @@
 "use client";
+// Compatibility shim. The app no longer uses a server; state comes from the
+// browser store. Prefer `useAppState()` in components. `getState()` remains for
+// simple one-shot reads.
+import { loadState } from "./store";
+import type { AppState } from "./types";
 
-export async function api<T = any>(
-  url: string,
-  opts?: RequestInit
-): Promise<T> {
-  const res = await fetch(url, {
-    ...opts,
-    headers: {
-      "Content-Type": "application/json",
-      ...(opts?.headers || {}),
-    },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error((data as any).error || `Request failed (${res.status})`);
-  }
-  return data as T;
-}
-
-export async function getState() {
-  return api("/api/state");
+export async function getState(): Promise<AppState> {
+  return loadState();
 }

@@ -4,17 +4,19 @@ import AdminShell, { Card, Field, inputCls } from "@/components/AdminShell";
 import ImageUploader from "@/components/ImageUploader";
 import Wheel from "@/components/Wheel";
 import { ConfirmDialog, useToast, Spinner } from "@/components/ui";
-import { api, getState } from "@/lib/client";
+import { loadState, mutateState, newId } from "@/lib/store";
+import { todayKey } from "@/lib/report";
 import type { GameASettings, WheelSegment, WheelSpin } from "@/lib/types";
 
 function newSegment(order: number): WheelSegment {
   return {
-    id: "new-" + Math.random().toString(36).slice(2),
+    id: newId(),
     name: "New Prize",
     image: null,
     color: "#7c3aed",
     totalWinners: 10,
     remainingWinners: 10,
+    odds: 10,
     active: true,
     order,
   };
@@ -25,7 +27,6 @@ function GameAAdmin() {
   const [settings, setSettings] = useState<GameASettings | null>(null);
   const [segments, setSegments] = useState<WheelSegment[]>([]);
   const [spins, setSpins] = useState<WheelSpin[]>([]);
-  const [spinCount, setSpinCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [confirm, setConfirm] = useState<null | {
     title: string;
@@ -34,14 +35,10 @@ function GameAAdmin() {
   }>(null);
 
   async function load() {
-    const [s, h] = await Promise.all([
-      getState(),
-      api<{ spins: WheelSpin[]; spinCount: number }>("/api/game-a/spins"),
-    ]);
+    const s = await loadState();
     setSettings(s.gameA);
-    setSegments(s.segments);
-    setSpins(h.spins);
-    setSpinCount(h.spinCount);
+    setSegments([...s.segments].sort((a, b) => a.order - b.order));
+    setSpins([...s.spins].reverse());
     setLoading(false);
   }
   useEffect(() => {
@@ -50,19 +47,18 @@ function GameAAdmin() {
 
   async function saveSettings() {
     if (!settings) return;
-    await api("/api/game-a/settings", {
-      method: "PATCH",
-      body: JSON.stringify(settings),
+    await mutateState((d) => {
+      d.gameA = settings;
     });
     toast("Settings saved — live now");
   }
 
   async function saveSegments() {
-    const res = await api<{ segments: WheelSegment[] }>("/api/game-a/segments", {
-      method: "PUT",
-      body: JSON.stringify({ segments }),
+    const ordered = segments.map((s, i) => ({ ...s, order: i }));
+    await mutateState((d) => {
+      d.segments = ordered;
     });
-    setSegments(res.segments);
+    setSegments(ordered);
     toast("Segments saved — live now");
   }
 
@@ -82,9 +78,40 @@ function GameAAdmin() {
   }
 
   async function runControl(action: string) {
-    await api("/api/game-a/reset", {
-      method: "POST",
-      body: JSON.stringify({ action }),
+    await mutateState((d) => {
+      switch (action) {
+        case "start":
+          d.gameA.status = "running";
+          break;
+        case "pause":
+          d.gameA.status = "paused";
+          break;
+        case "reset-winners":
+          d.segments.forEach((s) => {
+            s.remainingWinners = s.totalWinners;
+            s.active = true;
+          });
+          break;
+        case "reset-spins":
+          d.spins = [];
+          break;
+        case "start-new-day":
+          // Keep the spin log (for reports); restore each gift's daily allocation.
+          d.segments.forEach((s) => {
+            s.remainingWinners = s.totalWinners;
+            s.active = true;
+          });
+          d.gameA.lastRolloverDay = todayKey(d.gameA.dayStartHour);
+          break;
+        case "reset-all":
+          d.spins = [];
+          d.segments.forEach((s) => {
+            s.remainingWinners = s.totalWinners;
+            s.active = true;
+          });
+          d.gameA.status = "running";
+          break;
+      }
     });
     await load();
     toast("Done");
@@ -101,15 +128,15 @@ function GameAAdmin() {
 
   if (loading || !settings) return <Spinner label="Loading dashboard…" />;
 
+  const mode = settings.oddsMode;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-black">Spin the Wheel — Admin</h1>
         <span
           className={`rounded-full px-4 py-1.5 text-sm font-bold ${
-            settings.status === "running"
-              ? "bg-emerald-600"
-              : "bg-red-600"
+            settings.status === "running" ? "bg-emerald-600" : "bg-red-600"
           }`}
         >
           {settings.status.toUpperCase()}
@@ -118,7 +145,7 @@ function GameAAdmin() {
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatBox label="Total Spins" value={spinCount} />
+        <StatBox label="Total Spins" value={spins.length} />
         <StatBox label="Prizes Awarded" value={stats.awarded} />
         <StatBox label="Remaining Prizes" value={stats.remaining} />
         <StatBox label="Sold Out" value={stats.soldOut} />
@@ -135,6 +162,14 @@ function GameAAdmin() {
               duration={0}
               centerImage={settings.centerImage}
               spinning={false}
+              style={{
+                ringColorOuter: settings.ringColorOuter,
+                ringColorInner: settings.ringColorInner,
+                pointerColor: settings.pointerColor,
+                hubBorderColor: settings.hubBorderColor,
+                centerText: settings.centerText,
+                centerTextColor: settings.centerTextColor,
+              }}
             />
           </div>
         </Card>
@@ -148,7 +183,7 @@ function GameAAdmin() {
               onChange={(url) => setSettings({ ...settings, backgroundImage: url })}
             />
             <ImageUploader
-              label="Center Logo"
+              label="Center Logo (overrides text)"
               value={settings.centerImage}
               onChange={(url) => setSettings({ ...settings, centerImage: url })}
             />
@@ -167,6 +202,25 @@ function GameAAdmin() {
                 value={settings.subtitle}
                 onChange={(e) =>
                   setSettings({ ...settings, subtitle: e.target.value })
+                }
+              />
+            </Field>
+            <Field label="Center Text (when no logo)">
+              <input
+                className={inputCls}
+                value={settings.centerText}
+                onChange={(e) =>
+                  setSettings({ ...settings, centerText: e.target.value })
+                }
+              />
+            </Field>
+            <Field label="Center Text Colour">
+              <input
+                type="color"
+                className="h-10 w-16 rounded border border-white/10 bg-black/40"
+                value={settings.centerTextColor}
+                onChange={(e) =>
+                  setSettings({ ...settings, centerTextColor: e.target.value })
                 }
               />
             </Field>
@@ -234,15 +288,143 @@ function GameAAdmin() {
         </Card>
       </div>
 
+      {/* Wheel layout & colours */}
+      <Card title="Wheel Layout & Colours">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label={`Wheel Size (${settings.wheelSize}px)`}>
+            <input
+              type="range"
+              min={400}
+              max={1100}
+              step={10}
+              value={settings.wheelSize}
+              onChange={(e) =>
+                setSettings({ ...settings, wheelSize: Number(e.target.value) })
+              }
+              className="w-full"
+            />
+          </Field>
+          <Field label={`Horizontal Offset (${settings.wheelOffsetX}px)`}>
+            <input
+              type="range"
+              min={-300}
+              max={300}
+              value={settings.wheelOffsetX}
+              onChange={(e) =>
+                setSettings({ ...settings, wheelOffsetX: Number(e.target.value) })
+              }
+              className="w-full"
+            />
+          </Field>
+          <Field label={`Vertical Offset (${settings.wheelOffsetY}px)`}>
+            <input
+              type="range"
+              min={-300}
+              max={300}
+              value={settings.wheelOffsetY}
+              onChange={(e) =>
+                setSettings({ ...settings, wheelOffsetY: Number(e.target.value) })
+              }
+              className="w-full"
+            />
+          </Field>
+          <ColorField
+            label="Ring Outer"
+            value={settings.ringColorOuter}
+            onChange={(v) => setSettings({ ...settings, ringColorOuter: v })}
+          />
+          <ColorField
+            label="Ring Inner"
+            value={settings.ringColorInner}
+            onChange={(v) => setSettings({ ...settings, ringColorInner: v })}
+          />
+          <ColorField
+            label="Pointer"
+            value={settings.pointerColor}
+            onChange={(v) => setSettings({ ...settings, pointerColor: v })}
+          />
+          <ColorField
+            label="Hub Border"
+            value={settings.hubBorderColor}
+            onChange={(v) => setSettings({ ...settings, hubBorderColor: v })}
+          />
+        </div>
+        <button
+          onClick={saveSettings}
+          className="mt-5 rounded-lg bg-brand px-6 py-2.5 font-bold hover:bg-brand-light"
+        >
+          Save Layout
+        </button>
+      </Card>
+
+      {/* Odds mode & daily rollover */}
+      <Card title="Winner Selection & Daily Reset">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div>
+            <Field label="Selection Mode">
+              <div className="flex gap-2">
+                <ModeButton
+                  active={mode === "count"}
+                  onClick={() => setSettings({ ...settings, oddsMode: "count" })}
+                  title="Daily Count"
+                  desc="Each gift has a daily quantity; winners are random across remaining stock until all finish."
+                />
+                <ModeButton
+                  active={mode === "odds"}
+                  onClick={() => setSettings({ ...settings, oddsMode: "odds" })}
+                  title="Fixed Odds"
+                  desc="Each gift has a fixed probability weight; counts never run out."
+                />
+              </div>
+            </Field>
+          </div>
+          <div className="space-y-4">
+            <Field label={`Day Starts At (${settings.dayStartHour}:00)`}>
+              <input
+                type="range"
+                min={0}
+                max={23}
+                value={settings.dayStartHour}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    dayStartHour: Number(e.target.value),
+                  })
+                }
+                className="w-full"
+              />
+              <p className="mt-1 text-xs text-white/40">
+                Business-day boundary for end-of-day counts (e.g. 6 = day runs
+                6am→6am).
+              </p>
+            </Field>
+            <label className="flex items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={settings.autoRollover}
+                onChange={(e) =>
+                  setSettings({ ...settings, autoRollover: e.target.checked })
+                }
+              />
+              Auto-reset remaining counts at the start of each new day
+            </label>
+          </div>
+        </div>
+        <button
+          onClick={saveSettings}
+          className="mt-5 rounded-lg bg-brand px-6 py-2.5 font-bold hover:bg-brand-light"
+        >
+          Save Selection Settings
+        </button>
+      </Card>
+
       {/* Segment editor */}
       <Card
         title="Wheel Segments"
         right={
           <div className="flex gap-2">
             <button
-              onClick={() =>
-                setSegments((s) => [...s, newSegment(s.length)])
-              }
+              onClick={() => setSegments((s) => [...s, newSegment(s.length)])}
               className="rounded-lg bg-white/10 px-4 py-2 text-sm font-bold hover:bg-white/20"
             >
               + Add Segment
@@ -267,7 +449,7 @@ function GameAAdmin() {
             return (
               <div
                 key={s.id}
-                className="grid grid-cols-1 items-end gap-3 rounded-xl border border-white/10 bg-black/30 p-4 md:grid-cols-[auto_1fr_1fr_auto_auto_auto_auto]"
+                className="grid grid-cols-1 items-end gap-3 rounded-xl border border-white/10 bg-black/30 p-4 md:grid-cols-[auto_1fr_1fr_auto_auto_auto_auto_auto]"
               >
                 <div className="flex flex-col gap-1">
                   <button
@@ -304,32 +486,50 @@ function GameAAdmin() {
                     onChange={(e) => patchSeg(s.id, { color: e.target.value })}
                   />
                 </Field>
-                <Field label="Total">
-                  <input
-                    type="number"
-                    min={0}
-                    className={`${inputCls} w-20`}
-                    value={s.totalWinners}
-                    onChange={(e) =>
-                      patchSeg(s.id, {
-                        totalWinners: Math.max(0, Number(e.target.value)),
-                      })
-                    }
-                  />
-                </Field>
-                <Field label="Remaining">
-                  <input
-                    type="number"
-                    min={0}
-                    className={`${inputCls} w-20`}
-                    value={s.remainingWinners}
-                    onChange={(e) =>
-                      patchSeg(s.id, {
-                        remainingWinners: Math.max(0, Number(e.target.value)),
-                      })
-                    }
-                  />
-                </Field>
+                {mode === "count" ? (
+                  <>
+                    <Field label="Total">
+                      <input
+                        type="number"
+                        min={0}
+                        className={`${inputCls} w-20`}
+                        value={s.totalWinners}
+                        onChange={(e) =>
+                          patchSeg(s.id, {
+                            totalWinners: Math.max(0, Number(e.target.value)),
+                          })
+                        }
+                      />
+                    </Field>
+                    <Field label="Remaining">
+                      <input
+                        type="number"
+                        min={0}
+                        className={`${inputCls} w-20`}
+                        value={s.remainingWinners}
+                        onChange={(e) =>
+                          patchSeg(s.id, {
+                            remainingWinners: Math.max(0, Number(e.target.value)),
+                          })
+                        }
+                      />
+                    </Field>
+                  </>
+                ) : (
+                  <Field label="Odds (weight)">
+                    <input
+                      type="number"
+                      min={0}
+                      className={`${inputCls} w-24`}
+                      value={s.odds}
+                      onChange={(e) =>
+                        patchSeg(s.id, {
+                          odds: Math.max(0, Number(e.target.value)),
+                        })
+                      }
+                    />
+                  </Field>
+                )}
                 <div className="flex flex-col items-center gap-1">
                   <span className="text-[10px] uppercase text-white/40">
                     {soldOut ? "Sold Out" : "Active"}
@@ -356,40 +556,50 @@ function GameAAdmin() {
           })}
         </div>
         <p className="mt-3 text-xs text-white/40">
-          Winner selection is weighted by <b>Remaining</b>. A segment at 0 is
-          excluded and marked SOLD OUT automatically. Remember to Save Segments.
+          {mode === "count" ? (
+            <>
+              Winner selection is weighted by <b>Remaining</b>. A segment at 0 is
+              excluded and marked SOLD OUT automatically.
+            </>
+          ) : (
+            <>
+              Winner selection is weighted by <b>Odds</b> across active segments.
+              Higher odds = more likely. Counts are logged but never run out.
+            </>
+          )}{" "}
+          Remember to Save Segments.
         </p>
       </Card>
 
       {/* Winners by segment */}
-      <Card title="Winners by Segment">
-        <div className="space-y-2">
-          {segments.map((s) => {
-            const awarded = s.totalWinners - s.remainingWinners;
-            const pct = s.totalWinners
-              ? (awarded / s.totalWinners) * 100
-              : 0;
-            return (
-              <div key={s.id} className="flex items-center gap-3">
-                <span
-                  className="h-4 w-4 rounded"
-                  style={{ background: s.color }}
-                />
-                <span className="w-40 truncate text-sm">{s.name}</span>
-                <div className="h-3 flex-1 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-gold"
-                    style={{ width: `${pct}%` }}
+      {mode === "count" && (
+        <Card title="Winners by Segment">
+          <div className="space-y-2">
+            {segments.map((s) => {
+              const awarded = s.totalWinners - s.remainingWinners;
+              const pct = s.totalWinners ? (awarded / s.totalWinners) * 100 : 0;
+              return (
+                <div key={s.id} className="flex items-center gap-3">
+                  <span
+                    className="h-4 w-4 rounded"
+                    style={{ background: s.color }}
                   />
+                  <span className="w-40 truncate text-sm">{s.name}</span>
+                  <div className="h-3 flex-1 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-gold"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="w-28 text-right text-sm tabular-nums text-white/60">
+                    {awarded}/{s.totalWinners}
+                  </span>
                 </div>
-                <span className="w-28 text-right text-sm tabular-nums text-white/60">
-                  {awarded}/{s.totalWinners}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Campaign controls */}
       <Card title="Campaign Controls">
@@ -405,6 +615,19 @@ function GameAAdmin() {
             className="rounded-lg bg-amber-600 px-5 py-2.5 font-bold hover:bg-amber-500"
           >
             ⏸ Pause
+          </button>
+          <button
+            onClick={() =>
+              setConfirm({
+                title: "Start a New Day?",
+                message:
+                  "Restore every gift's remaining count to its daily total. The spin log is kept for reporting.",
+                action: "start-new-day",
+              })
+            }
+            className="rounded-lg bg-sky-600 px-5 py-2.5 font-bold hover:bg-sky-500"
+          >
+            🌅 Start New Day
           </button>
           <button
             onClick={() =>
@@ -448,7 +671,7 @@ function GameAAdmin() {
       </Card>
 
       {/* Spin history */}
-      <Card title={`Spin History (${spinCount})`}>
+      <Card title={`Spin History (${spins.length})`}>
         <div className="max-h-96 overflow-auto">
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 bg-black/80 text-white/50">
@@ -502,6 +725,53 @@ function GameAAdmin() {
         }}
       />
     </div>
+  );
+}
+
+function ColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <Field label={label}>
+      <input
+        type="color"
+        className="h-10 w-16 rounded border border-white/10 bg-black/40"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </Field>
+  );
+}
+
+function ModeButton({
+  active,
+  onClick,
+  title,
+  desc,
+}: {
+  active: boolean;
+  onClick: () => void;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 rounded-xl border p-3 text-left text-sm transition ${
+        active
+          ? "border-brand-light bg-brand/30"
+          : "border-white/10 bg-black/30 hover:bg-white/5"
+      }`}
+    >
+      <span className="block font-bold">{title}</span>
+      <span className="mt-1 block text-xs text-white/50">{desc}</span>
+    </button>
   );
 }
 

@@ -4,7 +4,8 @@ import Link from "next/link";
 import AdminShell, { Card, Field, inputCls } from "@/components/AdminShell";
 import ImageUploader from "@/components/ImageUploader";
 import { useToast, Spinner } from "@/components/ui";
-import { api, getState } from "@/lib/client";
+import { loadState, mutateState, hashPassword } from "@/lib/store";
+import { GAMES } from "@/lib/games";
 import type { LandingSettings } from "@/lib/types";
 
 function Overview() {
@@ -17,9 +18,9 @@ function Overview() {
   const [pw, setPw] = useState("");
 
   async function load() {
-    const s = await getState();
+    const s = await loadState();
     setLanding(s.landing);
-    setStats({ spins: s.spinCount, sessions: s.sessionCount });
+    setStats({ spins: s.spins.length, sessions: s.sessions.length });
   }
   useEffect(() => {
     load();
@@ -27,9 +28,8 @@ function Overview() {
 
   async function saveLanding() {
     if (!landing) return;
-    await api("/api/landing", {
-      method: "PATCH",
-      body: JSON.stringify(landing),
+    await mutateState((d) => {
+      d.landing = landing;
     });
     toast("Landing page saved");
   }
@@ -43,16 +43,15 @@ function Overview() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatBox label="Total Spins" value={stats.spins} />
         <StatBox label="Test Sessions" value={stats.sessions} />
-        <Link href="/admin/game-a">
-          <div className="flex h-full items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-700 p-6 text-center font-black uppercase hover:opacity-90">
-            🎡 Manage Wheel →
-          </div>
-        </Link>
-        <Link href="/admin/game-b">
-          <div className="flex h-full items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-700 p-6 text-center font-black uppercase hover:opacity-90">
-            ⚡ Manage Reflex →
-          </div>
-        </Link>
+        {GAMES.map((g) => (
+          <Link key={g.id} href={g.adminPath}>
+            <div
+              className={`flex h-full items-center justify-center rounded-2xl bg-gradient-to-br ${g.gradient} p-6 text-center font-black uppercase hover:opacity-90`}
+            >
+              {g.emoji} Manage {g.name} →
+            </div>
+          </Link>
+        ))}
       </div>
 
       <Card title="Landing Page">
@@ -105,16 +104,16 @@ function Overview() {
             />
             <button
               onClick={async () => {
-                try {
-                  await api("/api/admin/login", {
-                    method: "PATCH",
-                    body: JSON.stringify({ newPassword: pw }),
-                  });
-                  setPw("");
-                  toast("Password updated");
-                } catch (e: any) {
-                  toast(e.message, "err");
+                if (pw.length < 4) {
+                  toast("Password must be at least 4 characters", "err");
+                  return;
                 }
+                const hash = await hashPassword(pw);
+                await mutateState((d) => {
+                  d.adminPasswordHash = hash;
+                });
+                setPw("");
+                toast("Password updated");
               }}
               className="shrink-0 rounded-lg bg-brand px-6 py-2.5 font-bold hover:bg-brand-light"
             >

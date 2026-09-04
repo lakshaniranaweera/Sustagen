@@ -1,42 +1,54 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import PortraitStage from "@/components/PortraitStage";
 import Wheel, { computeRotation } from "@/components/Wheel";
 import { ToastProvider, Spinner } from "@/components/ui";
-import { api, getState } from "@/lib/client";
-import type { GameASettings, WheelSegment, WheelSpin } from "@/lib/types";
+import { useAppState } from "@/lib/useAppState";
+import { newId } from "@/lib/store";
+import { todayKey } from "@/lib/report";
+import { eligibleSegments, pickWinner } from "@/lib/weighted";
+import type { WheelSegment, WheelSpin } from "@/lib/types";
 
 function GameA() {
-  const [settings, setSettings] = useState<GameASettings | null>(null);
-  const [segments, setSegments] = useState<WheelSegment[]>([]);
-  const [spinCount, setSpinCount] = useState(0);
-  const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
+  // Pause live remote updates while a spin animates so the wheel doesn't jump.
+  const { state, loading, mutate, reload } = useAppState(!spinning);
+  const [rotation, setRotation] = useState(0);
   const [winner, setWinner] = useState<WheelSegment | null>(null);
   const [lastSpin, setLastSpin] = useState<WheelSpin | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const spinningRef = useRef(false);
 
-  useEffect(() => {
-    getState()
-      .then((s) => {
-        setSettings(s.gameA);
-        setSegments(s.segments);
-        setSpinCount(s.spinCount);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+  const settings = state?.gameA ?? null;
+  const segments = useMemo(
+    () => (state ? [...state.segments].sort((a, b) => a.order - b.order) : []),
+    [state]
+  );
+  const spinCount = state?.spins.length ?? 0;
+  const mode = settings?.oddsMode ?? "count";
+  const eligibleCount = eligibleSegments(segments, mode).length;
 
-  const eligibleCount = segments.filter(
-    (s) => s.active && s.remainingWinners > 0
-  ).length;
+  // Auto-reset daily gift counts at the business-day boundary (once).
+  const rolloverChecked = useRef(false);
+  useEffect(() => {
+    if (!settings || rolloverChecked.current) return;
+    rolloverChecked.current = true;
+    const today = todayKey(settings.dayStartHour);
+    if (settings.autoRollover && settings.lastRolloverDay !== today) {
+      mutate((d) => {
+        d.segments.forEach((s) => {
+          s.remainingWinners = s.totalWinners;
+          s.active = true;
+        });
+        d.gameA.lastRolloverDay = today;
+      });
+    }
+  }, [settings, mutate]);
 
   async function spin() {
-    if (spinningRef.current || !settings) return;
+    if (spinningRef.current || !settings || !state) return;
     if (settings.status !== "running") {
       setError("Campaign is currently paused.");
       return;
@@ -45,48 +57,57 @@ function GameA() {
       setError("All prizes are sold out.");
       return;
     }
+    const winnerId = pickWinner(segments, mode);
+    if (!winnerId) {
+      setError("No prizes remaining.");
+      return;
+    }
+
     spinningRef.current = true;
     setSpinning(true);
     setWinner(null);
     setError(null);
-    try {
-      const res = await api<{
-        winnerId: string;
-        spin: WheelSpin;
-        segments: WheelSegment[];
-        spinCount: number;
-      }>("/api/game-a/spin", { method: "POST" });
 
-      const idx = segments.findIndex((s) => s.id === res.winnerId);
-      const target = computeRotation(
-        rotation,
-        idx < 0 ? 0 : idx,
-        segments.length,
-        settings.rotations
-      );
-      setRotation(target);
+    const idx = segments.findIndex((s) => s.id === winnerId);
+    const target = computeRotation(
+      rotation,
+      idx < 0 ? 0 : idx,
+      segments.length,
+      settings.rotations
+    );
+    setRotation(target);
 
-      const winSeg =
-        res.segments.find((s) => s.id === res.winnerId) ||
-        segments.find((s) => s.id === res.winnerId) ||
-        null;
-
-      window.setTimeout(() => {
-        setSegments(res.segments);
-        setSpinCount(res.spinCount);
-        setLastSpin(res.spin);
-        setWinner(winSeg);
-        setSpinning(false);
-        spinningRef.current = false;
-      }, settings.spinDurationSec * 1000 + 300);
-    } catch (e: any) {
-      setError(e.message);
+    window.setTimeout(async () => {
+      // Authoritatively record the result in the browser store.
+      let recorded: WheelSpin | null = null;
+      let winSeg: WheelSegment | null = null;
+      const next = await mutate((draft) => {
+        const seg = draft.segments.find((s) => s.id === winnerId);
+        if (!seg) return;
+        if (seg.remainingWinners > 0) seg.remainingWinners -= 1;
+        if (draft.gameA.oddsMode === "count" && seg.remainingWinners === 0) {
+          seg.active = false; // SOLD OUT
+        }
+        recorded = {
+          id: newId(),
+          createdAt: new Date().toISOString(),
+          segmentId: seg.id,
+          segmentName: seg.name,
+          remainingAfter: seg.remainingWinners,
+        };
+        draft.spins.push(recorded);
+      });
+      winSeg = next.segments.find((s) => s.id === winnerId) ?? null;
+      setLastSpin(recorded);
+      setWinner(winSeg);
       setSpinning(false);
       spinningRef.current = false;
-    }
+      // Pull in any config changes an admin made during the spin.
+      reload();
+    }, settings.spinDurationSec * 1000 + 300);
   }
 
-  if (loading)
+  if (loading || !settings)
     return (
       <PortraitStage>
         <div className="flex h-full items-center justify-center">
@@ -96,7 +117,7 @@ function GameA() {
     );
 
   return (
-    <PortraitStage background={settings?.backgroundImage}>
+    <PortraitStage background={settings.backgroundImage}>
       <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80" />
 
       <Link
@@ -106,7 +127,7 @@ function GameA() {
         ← Home
       </Link>
 
-      {settings?.status === "paused" && (
+      {settings.status === "paused" && (
         <div className="absolute right-8 top-8 z-40 rounded-full bg-red-600 px-6 py-3 text-xl font-bold text-white">
           PAUSED
         </div>
@@ -115,29 +136,43 @@ function GameA() {
       <div className="relative z-10 flex h-full flex-col items-center justify-between px-16 py-24">
         <div className="text-center">
           <h1 className="gradient-text animate-shimmer text-7xl font-black uppercase text-shadow">
-            {settings?.title}
+            {settings.title}
           </h1>
-          <p className="mt-4 text-3xl text-white/80">{settings?.subtitle}</p>
+          <p className="mt-4 text-3xl text-white/80">{settings.subtitle}</p>
         </div>
 
-        <div className="w-[860px]">
+        <div
+          style={{
+            width: settings.wheelSize,
+            maxWidth: "92vw",
+            transform: `translate(${settings.wheelOffsetX}px, ${settings.wheelOffsetY}px)`,
+          }}
+        >
           <Wheel
             segments={segments}
             rotation={rotation}
-            duration={settings?.spinDurationSec || 5}
-            centerImage={settings?.centerImage || null}
+            duration={settings.spinDurationSec || 5}
+            centerImage={settings.centerImage || null}
             spinning={spinning}
+            style={{
+              ringColorOuter: settings.ringColorOuter,
+              ringColorInner: settings.ringColorInner,
+              pointerColor: settings.pointerColor,
+              hubBorderColor: settings.hubBorderColor,
+              centerText: settings.centerText,
+              centerTextColor: settings.centerTextColor,
+            }}
           />
         </div>
 
         <div className="flex w-full flex-col items-center gap-8">
           <motion.button
             onClick={spin}
-            disabled={spinning || eligibleCount === 0 || settings?.status !== "running"}
+            disabled={spinning || eligibleCount === 0 || settings.status !== "running"}
             whileTap={{ scale: 0.94 }}
             className="relative h-32 w-96 rounded-full bg-gradient-to-b from-gold to-amber-500 text-5xl font-black uppercase tracking-wider text-amber-950 shadow-glow transition disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {spinning ? "SPINNING…" : settings?.buttonText || "SPIN"}
+            {spinning ? "SPINNING…" : settings.buttonText || "SPIN"}
           </motion.button>
 
           <div className="flex items-center gap-6 rounded-2xl bg-black/40 px-10 py-5 backdrop-blur">
@@ -177,7 +212,7 @@ function GameA() {
               className="relative w-full max-w-2xl overflow-hidden rounded-[48px] border-4 border-gold bg-gradient-to-b from-brand-dark to-black p-16 text-center shadow-glow"
             >
               <p className="text-3xl font-bold uppercase tracking-[0.3em] text-gold">
-                {settings?.popupTitle}
+                {settings.popupTitle}
               </p>
               {winner.image && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -188,12 +223,12 @@ function GameA() {
                 />
               )}
               <p className="mt-8 text-3xl text-white/70">
-                {settings?.popupSubtitle}
+                {settings.popupSubtitle}
               </p>
               <h2 className="mt-2 text-7xl font-black uppercase text-white text-shadow">
                 {winner.name}
               </h2>
-              {lastSpin && (
+              {lastSpin && mode === "count" && (
                 <p className="mt-6 text-xl text-white/50">
                   {winner.remainingWinners > 0
                     ? `${winner.remainingWinners} remaining`

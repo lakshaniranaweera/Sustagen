@@ -3,7 +3,37 @@ import { useRef, useState } from "react";
 import { useToast } from "./ui";
 
 const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
-const MAX = 6 * 1024 * 1024;
+const MAX = 12 * 1024 * 1024; // 12MB source; we downscale before storing
+const MAX_DIM = 1280; // longest edge after downscale
+const QUALITY = 0.82;
+
+// Read a file, downscale to a data URL entirely in the browser (no server).
+function compress(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read file"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Invalid image"));
+      img.onload = () => {
+        const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas unsupported"));
+        ctx.drawImage(img, 0, 0, w, h);
+        // PNGs may carry transparency; keep PNG for those, else WebP.
+        const type = file.type === "image/png" ? "image/png" : "image/webp";
+        resolve(canvas.toDataURL(type, QUALITY));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function ImageUploader({
   value,
@@ -26,20 +56,16 @@ export default function ImageUploader({
       return;
     }
     if (file.size > MAX) {
-      toast("Max file size is 6MB", "err");
+      toast("Max file size is 12MB", "err");
       return;
     }
     setBusy(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
-      onChange(data.url);
-      toast("Image uploaded");
+      const dataUrl = await compress(file);
+      onChange(dataUrl);
+      toast("Image added");
     } catch (e: any) {
-      toast(e.message || "Upload failed", "err");
+      toast(e.message || "Could not process image", "err");
     } finally {
       setBusy(false);
     }
@@ -74,7 +100,7 @@ export default function ImageUploader({
             onClick={() => inputRef.current?.click()}
             className="rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-light disabled:opacity-50"
           >
-            {busy ? "Uploading…" : value ? "Change" : "Upload"}
+            {busy ? "Processing…" : value ? "Change" : "Upload"}
           </button>
           {value && (
             <button

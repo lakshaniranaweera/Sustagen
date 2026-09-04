@@ -3,16 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import AdminShell, { Card, Field, inputCls } from "@/components/AdminShell";
 import ImageUploader from "@/components/ImageUploader";
 import { ConfirmDialog, useToast, Spinner } from "@/components/ui";
-import { api, getState } from "@/lib/client";
-import type {
-  GameBSettings,
-  CognitiveTarget,
-  CognitiveGameSession,
-} from "@/lib/types";
-
-function rid() {
-  return "t-" + Math.random().toString(36).slice(2);
-}
+import { loadState, mutateState, newId } from "@/lib/store";
+import type { GameBSettings, CognitiveGameSession } from "@/lib/types";
 
 function GameBAdmin() {
   const toast = useToast();
@@ -22,12 +14,9 @@ function GameBAdmin() {
   const [confirmReset, setConfirmReset] = useState(false);
 
   async function load() {
-    const [s, h] = await Promise.all([
-      getState(),
-      api<{ sessions: CognitiveGameSession[] }>("/api/game-b/sessions"),
-    ]);
+    const s = await loadState();
     setSettings(s.gameB);
-    setSessions(h.sessions);
+    setSessions([...s.sessions].reverse());
     setLoading(false);
   }
   useEffect(() => {
@@ -40,14 +29,13 @@ function GameBAdmin() {
       toast("Need at least 2 targets", "err");
       return;
     }
-    await api("/api/game-b/settings", {
-      method: "PATCH",
-      body: JSON.stringify(settings),
+    await mutateState((d) => {
+      d.gameB = settings;
     });
     toast("Settings saved — live now");
   }
 
-  function patchTarget(id: string, patch: Partial<CognitiveTarget>) {
+  function patchTarget(id: string, patch: Partial<GameBSettings["targets"][number]>) {
     setSettings(
       (s) =>
         s && {
@@ -216,6 +204,24 @@ function GameBAdmin() {
                 not tapped in time (harder).
               </p>
             </Field>
+            <Field label={`Day Starts At (${settings.dayStartHour}:00)`}>
+              <input
+                type="range"
+                min={0}
+                max={23}
+                value={settings.dayStartHour}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    dayStartHour: Number(e.target.value),
+                  })
+                }
+                className="w-full"
+              />
+              <p className="mt-1 text-xs text-white/40">
+                Business-day boundary for end-of-day play counts.
+              </p>
+            </Field>
           </div>
         </Card>
       </div>
@@ -231,7 +237,7 @@ function GameBAdmin() {
                 ...settings,
                 targets: [
                   ...settings.targets,
-                  { id: rid(), color: "#22c55e", image: null, label: "" },
+                  { id: newId(), color: "#22c55e", image: null, label: "" },
                 ],
               })
             }
@@ -243,7 +249,7 @@ function GameBAdmin() {
         }
       >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {settings.targets.map((t, i) => (
+          {settings.targets.map((t) => (
             <div
               key={t.id}
               className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-3"
@@ -377,7 +383,9 @@ function GameBAdmin() {
         confirmText="Delete all"
         onCancel={() => setConfirmReset(false)}
         onConfirm={async () => {
-          await api("/api/game-b/sessions", { method: "DELETE" });
+          await mutateState((d) => {
+            d.sessions = [];
+          });
           setConfirmReset(false);
           load();
           toast("Sessions cleared");

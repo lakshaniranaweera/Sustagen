@@ -4,15 +4,17 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import PortraitStage from "@/components/PortraitStage";
 import { Spinner } from "@/components/ui";
-import { api, getState } from "@/lib/client";
+import { useAppState } from "@/lib/useAppState";
+import { newId } from "@/lib/store";
 import type { GameBSettings, CognitiveHit } from "@/lib/types";
 
 type Phase = "start" | "playing" | "result";
 
 export default function Page() {
-  const [settings, setSettings] = useState<GameBSettings | null>(null);
-  const [loading, setLoading] = useState(true);
   const [phase, setPhase] = useState<Phase>("start");
+  // Apply live admin changes only on the start screen.
+  const { state, loading, mutate } = useAppState(phase === "start");
+  const settings = state?.gameB ?? null;
   const [timeLeft, setTimeLeft] = useState(30);
   const [score, setScore] = useState(0);
   const [activeIdx, setActiveIdx] = useState(-1);
@@ -30,12 +32,6 @@ export default function Page() {
   const endAtRef = useRef(0);
 
   useEffect(() => {
-    getState()
-      .then((s) => {
-        setSettings(s.gameB);
-        setTimeLeft(s.gameB.durationSec);
-      })
-      .finally(() => setLoading(false));
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
       if (holdRef.current) clearTimeout(holdRef.current);
@@ -46,7 +42,7 @@ export default function Page() {
 
   const activateRandom = useCallback(
     (prev: number) => {
-      if (targets.length === 0) return;
+      if (!settings || targets.length === 0) return;
       let next = Math.floor(Math.random() * targets.length);
       if (targets.length > 1) {
         while (next === prev) next = Math.floor(Math.random() * targets.length);
@@ -54,10 +50,9 @@ export default function Page() {
       setActiveIdx(next);
       activatedAt.current = performance.now();
       if (holdRef.current) clearTimeout(holdRef.current);
-      if (settings && settings.activeHoldMs > 0) {
+      if (settings.activeHoldMs > 0) {
         holdRef.current = setTimeout(() => {
-          // missed — move on without scoring
-          activateRandom(next);
+          activateRandom(next); // missed — move on without scoring
         }, settings.activeHoldMs);
       }
     },
@@ -78,9 +73,16 @@ export default function Page() {
     setResult({ totalHits: hits.length, best, avg, passed });
     setPhase("result");
     try {
-      await api("/api/game-b/session", {
-        method: "POST",
-        body: JSON.stringify({ hits }),
+      await mutate((draft) => {
+        draft.sessions.push({
+          id: newId(),
+          createdAt: new Date().toISOString(),
+          totalHits: hits.length,
+          bestReactionMs: best,
+          avgReactionMs: avg,
+          passed,
+          hits,
+        });
       });
     } catch {
       /* non-blocking persistence */
