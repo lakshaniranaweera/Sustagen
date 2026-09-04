@@ -5,11 +5,12 @@ import AdminShell, { Card, Field, inputCls } from "@/components/AdminShell";
 import ImageUploader from "@/components/ImageUploader";
 import { useToast, Spinner } from "@/components/ui";
 import { loadState, mutateState, hashPassword } from "@/lib/store";
-import { GAMES } from "@/lib/games";
+import { useEnabledGames } from "@/lib/games";
 import type { LandingSettings } from "@/lib/types";
 
 function Overview() {
   const toast = useToast();
+  const { games } = useEnabledGames();
   const [landing, setLanding] = useState<LandingSettings | null>(null);
   const [stats, setStats] = useState<{ spins: number; sessions: number }>({
     spins: 0,
@@ -43,7 +44,7 @@ function Overview() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatBox label="Total Spins" value={stats.spins} />
         <StatBox label="Test Sessions" value={stats.sessions} />
-        {GAMES.map((g) => (
+        {games.map((g) => (
           <Link key={g.id} href={g.adminPath}>
             <div
               className={`flex h-full items-center justify-center rounded-2xl bg-gradient-to-br ${g.gradient} p-6 text-center font-black uppercase hover:opacity-90`}

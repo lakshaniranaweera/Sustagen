@@ -3,10 +3,11 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import PortraitStage from "@/components/PortraitStage";
 import { useAppState } from "@/lib/useAppState";
-import { GAMES, type GameEntry } from "@/lib/games";
+import { useEnabledGames, type GameEntry } from "@/lib/games";
 
 export default function Home() {
   const { state, loading } = useAppState();
+  const { games } = useEnabledGames();
   const landing = state?.landing ?? null;
 
   return (
@@ -52,9 +53,12 @@ export default function Home() {
         </motion.div>
 
         <div className="mt-24 flex w-full flex-col gap-10">
-          {GAMES.map((g, i) => (
+          {games.map((g, i) => (
             <GameCard key={g.id} game={g} index={i} />
           ))}
+          {!loading && games.length === 0 && (
+            <p className="text-2xl text-white/50">No games are available.</p>
+          )}
         </div>
 
         {loading && (

@@ -6,12 +6,14 @@ import PortraitStage from "@/components/PortraitStage";
 import Wheel, { computeRotation } from "@/components/Wheel";
 import { ToastProvider, Spinner } from "@/components/ui";
 import { useAppState } from "@/lib/useAppState";
+import { useRequireGame } from "@/lib/games";
 import { newId } from "@/lib/store";
 import { todayKey } from "@/lib/report";
 import { eligibleSegments, pickWinner } from "@/lib/weighted";
 import type { WheelSegment, WheelSpin } from "@/lib/types";
 
 function GameA() {
+  const gameReady = useRequireGame("game-a", "/");
   const [spinning, setSpinning] = useState(false);
   // Pause live remote updates while a spin animates so the wheel doesn't jump.
   const { state, loading, mutate, reload } = useAppState(!spinning);
@@ -107,7 +109,7 @@ function GameA() {
     }, settings.spinDurationSec * 1000 + 300);
   }
 
-  if (loading || !settings)
+  if (loading || !settings || !gameReady)
     return (
       <PortraitStage>
         <div className="flex h-full items-center justify-center">

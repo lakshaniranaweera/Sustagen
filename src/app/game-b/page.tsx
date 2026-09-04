@@ -5,12 +5,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import PortraitStage from "@/components/PortraitStage";
 import { Spinner } from "@/components/ui";
 import { useAppState } from "@/lib/useAppState";
+import { useRequireGame } from "@/lib/games";
 import { newId } from "@/lib/store";
 import type { GameBSettings, CognitiveHit } from "@/lib/types";
 
 type Phase = "start" | "playing" | "result";
 
 export default function Page() {
+  const gameReady = useRequireGame("game-b", "/");
   const [phase, setPhase] = useState<Phase>("start");
   // Apply live admin changes only on the start screen.
   const { state, loading, mutate } = useAppState(phase === "start");
@@ -118,7 +120,7 @@ export default function Page() {
     activateRandom(i);
   }
 
-  if (loading || !settings)
+  if (loading || !settings || !gameReady)
     return (
       <PortraitStage>
         <div className="flex h-full items-center justify-center">

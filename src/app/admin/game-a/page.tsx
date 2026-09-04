@@ -5,6 +5,7 @@ import ImageUploader from "@/components/ImageUploader";
 import Wheel from "@/components/Wheel";
 import { ConfirmDialog, useToast, Spinner } from "@/components/ui";
 import { loadState, mutateState, newId } from "@/lib/store";
+import { useRequireGame } from "@/lib/games";
 import { todayKey } from "@/lib/report";
 import type { GameASettings, WheelSegment, WheelSpin } from "@/lib/types";
 
@@ -24,6 +25,7 @@ function newSegment(order: number): WheelSegment {
 
 function GameAAdmin() {
   const toast = useToast();
+  const gameReady = useRequireGame("game-a", "/admin");
   const [settings, setSettings] = useState<GameASettings | null>(null);
   const [segments, setSegments] = useState<WheelSegment[]>([]);
   const [spins, setSpins] = useState<WheelSpin[]>([]);
@@ -126,7 +128,8 @@ function GameAAdmin() {
     return { totalWinners, remaining, soldOut, awarded: totalWinners - remaining };
   }, [segments]);
 
-  if (loading || !settings) return <Spinner label="Loading dashboard…" />;
+  if (loading || !settings || !gameReady)
+    return <Spinner label="Loading dashboard…" />;
 
   const mode = settings.oddsMode;
 

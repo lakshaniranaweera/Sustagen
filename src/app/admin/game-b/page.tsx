@@ -4,10 +4,12 @@ import AdminShell, { Card, Field, inputCls } from "@/components/AdminShell";
 import ImageUploader from "@/components/ImageUploader";
 import { ConfirmDialog, useToast, Spinner } from "@/components/ui";
 import { loadState, mutateState, newId } from "@/lib/store";
+import { useRequireGame } from "@/lib/games";
 import type { GameBSettings, CognitiveGameSession } from "@/lib/types";
 
 function GameBAdmin() {
   const toast = useToast();
+  const gameReady = useRequireGame("game-b", "/admin");
   const [settings, setSettings] = useState<GameBSettings | null>(null);
   const [sessions, setSessions] = useState<CognitiveGameSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +65,8 @@ function GameBAdmin() {
     };
   }, [sessions]);
 
-  if (loading || !settings) return <Spinner label="Loading dashboard…" />;
+  if (loading || !settings || !gameReady)
+    return <Spinner label="Loading dashboard…" />;
 
   return (
     <div className="space-y-6">

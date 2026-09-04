@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { loadState, verifyPassword } from "@/lib/store";
-import { GAMES } from "@/lib/games";
+import { useEnabledGames } from "@/lib/games";
 import { ToastProvider, useToast, Spinner } from "./ui";
 
 const SESSION_KEY = "admin-authed";
@@ -70,9 +70,10 @@ function LoginForm({ onLogin }: { onLogin: () => void }) {
 function Nav({ onLogout }: { onLogout: () => void }) {
   const path = usePathname();
   const toast = useToast();
+  const { games } = useEnabledGames();
   const links = [
     { href: "/admin", label: "Overview" },
-    ...GAMES.map((g) => ({ href: g.adminPath, label: g.name })),
+    ...games.map((g) => ({ href: g.adminPath, label: g.name })),
     { href: "/admin/reports", label: "Reports" },
   ];
   return (
