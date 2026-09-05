@@ -7,7 +7,7 @@
     },
     {
       "id": "game-b",
-      "enabled": false
+      "enabled": true
     }
   ]
 }
