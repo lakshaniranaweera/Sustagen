@@ -30,6 +30,7 @@ export interface WheelSpin {
 export interface GameASettings {
   backgroundImage: string | null;
   wheelBackground: string | null;
+  giftBackground: string | null; // background behind the gift/prize popup
   centerImage: string | null;
   centerText: string;
   centerTextColor: string;

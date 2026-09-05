@@ -190,6 +190,11 @@ function GameAAdmin() {
               value={settings.centerImage}
               onChange={(url) => setSettings({ ...settings, centerImage: url })}
             />
+            <ImageUploader
+              label="Gift Popup Background"
+              value={settings.giftBackground}
+              onChange={(url) => setSettings({ ...settings, giftBackground: url })}
+            />
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Field label="Title">

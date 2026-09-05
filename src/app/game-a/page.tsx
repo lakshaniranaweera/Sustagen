@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import PortraitStage from "@/components/PortraitStage";
 import Wheel, { computeRotation } from "@/components/Wheel";
@@ -9,6 +8,7 @@ import { useAppState } from "@/lib/useAppState";
 import { useRequireGame } from "@/lib/games";
 import { newId } from "@/lib/store";
 import { todayKey } from "@/lib/report";
+import { DEFAULT_BG } from "@/lib/assets";
 import { eligibleSegments, pickWinner } from "@/lib/weighted";
 import type { WheelSegment, WheelSpin } from "@/lib/types";
 
@@ -28,9 +28,15 @@ function GameA() {
     () => (state ? [...state.segments].sort((a, b) => a.order - b.order) : []),
     [state]
   );
-  const spinCount = state?.spins.length ?? 0;
   const mode = settings?.oddsMode ?? "count";
   const eligibleCount = eligibleSegments(segments, mode).length;
+
+  // Auto-dismiss the gift popup after 5s → back to the ready wheel.
+  useEffect(() => {
+    if (!winner) return;
+    const t = window.setTimeout(() => setWinner(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [winner]);
 
   // Auto-reset daily gift counts at the business-day boundary (once).
   const rolloverChecked = useRef(false);
@@ -119,15 +125,12 @@ function GameA() {
     );
 
   return (
-    <PortraitStage background={settings.backgroundImage}>
+    <PortraitStage
+      background={settings.backgroundImage ?? DEFAULT_BG.spinWheel}
+      back="/"
+      fullscreen
+    >
       <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80" />
-
-      <Link
-        href="/"
-        className="absolute left-8 top-8 z-40 rounded-full bg-white/10 px-6 py-3 text-xl font-bold text-white backdrop-blur hover:bg-white/25"
-      >
-        ← Home
-      </Link>
 
       {settings.status === "paused" && (
         <div className="absolute right-8 top-8 z-40 rounded-full bg-red-600 px-6 py-3 text-xl font-bold text-white">
@@ -177,15 +180,6 @@ function GameA() {
             {spinning ? "SPINNING…" : settings.buttonText || "SPIN"}
           </motion.button>
 
-          <div className="flex items-center gap-6 rounded-2xl bg-black/40 px-10 py-5 backdrop-blur">
-            <span className="text-2xl font-semibold uppercase tracking-widest text-white/60">
-              Total Spins
-            </span>
-            <span className="text-5xl font-black text-gold tabular-nums">
-              {spinCount.toLocaleString()}
-            </span>
-          </div>
-
           {error && (
             <div className="rounded-xl bg-red-600/90 px-6 py-3 text-xl font-semibold text-white">
               {error}
@@ -198,7 +192,15 @@ function GameA() {
       <AnimatePresence>
         {winner && (
           <motion.div
-            className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 p-16"
+            key="winner-popup"
+            className="absolute inset-0 z-50 flex items-center justify-center p-16"
+            style={{
+              backgroundImage: `linear-gradient(rgba(0,0,0,0.72), rgba(0,0,0,0.82)), url(${
+                settings.giftBackground ?? DEFAULT_BG.spinWheelGift
+              })`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

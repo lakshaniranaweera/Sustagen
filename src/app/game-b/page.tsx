@@ -1,12 +1,12 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import PortraitStage from "@/components/PortraitStage";
 import { Spinner } from "@/components/ui";
 import { useAppState } from "@/lib/useAppState";
 import { useRequireGame } from "@/lib/games";
 import { newId } from "@/lib/store";
+import { DEFAULT_BG } from "@/lib/assets";
 import type { GameBSettings, CognitiveHit } from "@/lib/types";
 
 type Phase = "start" | "playing" | "result";
@@ -130,15 +130,12 @@ export default function Page() {
     );
 
   return (
-    <PortraitStage background={settings.backgroundImage}>
+    <PortraitStage
+      background={settings.backgroundImage ?? DEFAULT_BG.cognitive}
+      back="/"
+      fullscreen
+    >
       <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/85" />
-
-      <Link
-        href="/"
-        className="absolute left-8 top-8 z-40 rounded-full bg-white/10 px-6 py-3 text-xl font-bold text-white backdrop-blur hover:bg-white/25"
-      >
-        ← Home
-      </Link>
 
       <div className="relative z-10 flex h-full flex-col items-center justify-center px-16">
         <AnimatePresence mode="wait">

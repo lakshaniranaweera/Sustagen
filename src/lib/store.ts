@@ -73,6 +73,7 @@ export function defaultState(): AppState {
     gameA: {
       backgroundImage: null,
       wheelBackground: null,
+      giftBackground: null,
       centerImage: null,
       centerText: "★",
       centerTextColor: "#ffffff",
