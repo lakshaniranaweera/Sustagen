@@ -224,7 +224,7 @@ function GameA() {
             >
               {winner.isPrize !== false ? (
                 <>
-                  <p className="text-3xl font-bold uppercase tracking-[0.3em] text-gold text-shadow">
+                  <p className="text-4xl font-bold uppercase tracking-[0.3em] text-[#10214f] text-shadow">
                     {settings.popupTitle}
                   </p>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -234,16 +234,16 @@ function GameA() {
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
                     }}
-                    className="mx-auto mt-8 h-56 w-56 rounded-3xl object-cover shadow-card"
+                    className="mx-auto mt-8 h-64 w-64 object-contain"
                   />
-                  <p className="mt-8 text-3xl text-white/80 text-shadow">
+                  <p className="mt-8 text-4xl text-[#10214f] text-shadow">
                     {settings.popupSubtitle}
                   </p>
-                  <h2 className="mt-2 text-7xl font-black uppercase text-white text-shadow">
+                  <h2 className="mt-2 text-8xl font-black uppercase text-[#10214f] text-shadow">
                     {winner.name}
                   </h2>
                   {lastSpin && mode === "count" && (
-                    <p className="mt-6 text-xl text-white/60 text-shadow">
+                    <p className="mt-6 text-2xl text-[#10214f]/80 text-shadow">
                       {winner.remainingWinners > 0
                         ? `${winner.remainingWinners} remaining`
                         : "Last one — now SOLD OUT!"}
@@ -252,7 +252,7 @@ function GameA() {
                 </>
               ) : (
                 <>
-                  <h2 className="text-6xl font-black uppercase text-white text-shadow">
+                  <h2 className="text-7xl font-black uppercase text-[#10214f] text-shadow">
                     {settings.losePopupTitle}
                   </h2>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -262,9 +262,9 @@ function GameA() {
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
                     }}
-                    className="mx-auto mt-8 h-56 w-56 rounded-3xl object-cover shadow-card"
+                    className="mx-auto mt-8 h-64 w-64 object-contain"
                   />
-                  <p className="mt-8 text-3xl text-white/80 text-shadow">
+                  <p className="mt-8 text-4xl text-[#10214f] text-shadow">
                     {settings.losePopupSubtitle}
                   </p>
                 </>

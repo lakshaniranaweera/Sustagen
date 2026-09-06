@@ -134,8 +134,6 @@ export function defaultState(): AppState {
       seg("Free Coffee", "#ef4444", 20, 20, 1),
       seg("10% OFF", "#f59e0b", 30, 30, 2),
       seg("Try Again", "#334155", 999, 40, 3, false),
-      seg("Gift Card", "#22c55e", 10, 10, 4),
-      seg("Mystery Box", "#0ea5e9", 8, 8, 5),
     ],
     spins: [],
     sessions: [],
