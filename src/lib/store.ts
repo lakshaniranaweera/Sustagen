@@ -42,7 +42,8 @@ function seg(
   color: string,
   total: number,
   odds: number,
-  order: number
+  order: number,
+  isPrize = true
 ): WheelSegment {
   return {
     id: newId(),
@@ -53,6 +54,7 @@ function seg(
     remainingWinners: total,
     odds,
     active: true,
+    isPrize,
     order,
   };
 }
@@ -84,11 +86,15 @@ export function defaultState(): AppState {
       subtitle: "Give it a spin and claim your prize!",
       popupTitle: "CONGRATULATIONS!",
       popupSubtitle: "You won",
+      losePopupTitle: "BETTER LUCK NEXT TIME",
+      losePopupSubtitle: "No win this time — give it another spin!",
       status: "running",
       oddsMode: "count",
       wheelSize: 860,
       wheelOffsetX: 0,
       wheelOffsetY: 0,
+      buttonOffsetX: 0,
+      buttonOffsetY: 0,
       ringColorOuter: "#7c3aed",
       ringColorInner: "#0a0a12",
       pointerColor: "#f5c518",
@@ -115,6 +121,7 @@ export function defaultState(): AppState {
         { id: newId(), color: "#a855f7", image: null, label: "" },
         { id: newId(), color: "#ec4899", image: null, label: "" },
       ],
+      startButtonText: "Start Game",
       successMessage: "SHARP MIND",
       failMessage: "KEEP PRACTICING",
       status: "running",
@@ -124,7 +131,7 @@ export function defaultState(): AppState {
       seg("Grand Prize", "#7c3aed", 5, 5, 0),
       seg("Free Coffee", "#ef4444", 20, 20, 1),
       seg("10% OFF", "#f59e0b", 30, 30, 2),
-      seg("Try Again", "#334155", 999, 40, 3),
+      seg("Try Again", "#334155", 999, 40, 3, false),
       seg("Gift Card", "#22c55e", 10, 10, 4),
       seg("Mystery Box", "#0ea5e9", 8, 8, 5),
     ],
@@ -183,6 +190,12 @@ function migrate(stored: any): AppState {
         ...d.segments[0],
         ...s,
         odds: typeof s.odds === "number" ? s.odds : s.totalWinners ?? 1,
+        isPrize:
+          typeof s.isPrize === "boolean"
+            ? s.isPrize
+            : !/try\s*again|better\s*luck|no\s*win|sorry/i.test(
+                String(s.name ?? "")
+              ),
         order: typeof s.order === "number" ? s.order : i,
       }))
     : d.segments;

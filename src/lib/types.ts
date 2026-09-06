@@ -16,6 +16,7 @@ export interface WheelSegment {
   remainingWinners: number;
   odds: number; // relative weight (used when oddsMode === "odds")
   active: boolean;
+  isPrize: boolean; // false = a "no win / try again" slot (shows consolation copy)
   order: number;
 }
 
@@ -41,6 +42,8 @@ export interface GameASettings {
   subtitle: string;
   popupTitle: string;
   popupSubtitle: string;
+  losePopupTitle: string; // shown when landing on a "no win / try again" slot
+  losePopupSubtitle: string;
   status: CampaignStatus;
   // Winner selection
   oddsMode: OddsMode;
@@ -48,6 +51,8 @@ export interface GameASettings {
   wheelSize: number; // px width of the wheel on the display
   wheelOffsetX: number; // px horizontal nudge
   wheelOffsetY: number; // px vertical nudge
+  buttonOffsetX: number; // px horizontal nudge of the spin button
+  buttonOffsetY: number; // px vertical nudge of the spin button
   ringColorOuter: string;
   ringColorInner: string;
   pointerColor: string;
@@ -75,6 +80,7 @@ export interface GameBSettings {
   sharpMindScore: number;
   activeHoldMs: number; // how long a target stays lit before auto-moving (0 = until hit)
   targets: CognitiveTarget[];
+  startButtonText: string;
   successMessage: string;
   failMessage: string;
   status: CampaignStatus;

@@ -135,8 +135,6 @@ export default function Page() {
       back="/"
       fullscreen
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/85" />
-
       <div className="relative z-10 flex h-full flex-col items-center justify-center px-16">
         <AnimatePresence mode="wait">
           {phase === "start" && (
@@ -170,7 +168,7 @@ export default function Page() {
                 onClick={start}
                 className="mt-16 rounded-full bg-gradient-to-b from-cyan-400 to-blue-600 px-24 py-8 text-5xl font-black uppercase tracking-wider text-white shadow-glow"
               >
-                Start Game
+                {settings.startButtonText || "Start Game"}
               </motion.button>
               <p className="mt-10 text-2xl text-white/50">
                 Reach {settings.sharpMindScore}+ hits in {settings.durationSec}s

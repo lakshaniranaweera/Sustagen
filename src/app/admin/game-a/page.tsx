@@ -19,6 +19,7 @@ function newSegment(order: number): WheelSegment {
     remainingWinners: 10,
     odds: 10,
     active: true,
+    isPrize: true,
     order,
   };
 }
@@ -286,6 +287,24 @@ function GameAAdmin() {
                 }
               />
             </Field>
+            <Field label="No-Win Popup Title (Try Again)">
+              <input
+                className={inputCls}
+                value={settings.losePopupTitle}
+                onChange={(e) =>
+                  setSettings({ ...settings, losePopupTitle: e.target.value })
+                }
+              />
+            </Field>
+            <Field label="No-Win Popup Subtitle">
+              <input
+                className={inputCls}
+                value={settings.losePopupSubtitle}
+                onChange={(e) =>
+                  setSettings({ ...settings, losePopupSubtitle: e.target.value })
+                }
+              />
+            </Field>
           </div>
           <button
             onClick={saveSettings}
@@ -332,6 +351,30 @@ function GameAAdmin() {
               value={settings.wheelOffsetY}
               onChange={(e) =>
                 setSettings({ ...settings, wheelOffsetY: Number(e.target.value) })
+              }
+              className="w-full"
+            />
+          </Field>
+          <Field label={`Button Horizontal Offset (${settings.buttonOffsetX}px)`}>
+            <input
+              type="range"
+              min={-400}
+              max={400}
+              value={settings.buttonOffsetX}
+              onChange={(e) =>
+                setSettings({ ...settings, buttonOffsetX: Number(e.target.value) })
+              }
+              className="w-full"
+            />
+          </Field>
+          <Field label={`Button Vertical Offset (${settings.buttonOffsetY}px)`}>
+            <input
+              type="range"
+              min={-400}
+              max={400}
+              value={settings.buttonOffsetY}
+              onChange={(e) =>
+                setSettings({ ...settings, buttonOffsetY: Number(e.target.value) })
               }
               className="w-full"
             />
@@ -549,6 +592,15 @@ function GameAAdmin() {
                     }`}
                   >
                     {s.active ? "ON" : "OFF"}
+                  </button>
+                  <button
+                    onClick={() => patchSeg(s.id, { isPrize: !s.isPrize })}
+                    title="Toggle whether this slot is a real prize or a 'try again' no-win slot"
+                    className={`rounded-full px-3 py-1 text-xs font-bold ${
+                      s.isPrize ? "bg-brand" : "bg-amber-700"
+                    }`}
+                  >
+                    {s.isPrize ? "PRIZE" : "NO WIN"}
                   </button>
                   <button
                     onClick={() =>

@@ -130,8 +130,6 @@ function GameA() {
       back="/"
       fullscreen
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80" />
-
       {settings.status === "paused" && (
         <div className="absolute right-8 top-8 z-40 rounded-full bg-red-600 px-6 py-3 text-xl font-bold text-white">
           PAUSED
@@ -170,7 +168,12 @@ function GameA() {
           />
         </div>
 
-        <div className="flex w-full flex-col items-center gap-8">
+        <div
+          className="flex w-full flex-col items-center gap-8"
+          style={{
+            transform: `translate(${settings.buttonOffsetX}px, ${settings.buttonOffsetY}px)`,
+          }}
+        >
           <motion.button
             onClick={spin}
             disabled={spinning || eligibleCount === 0 || settings.status !== "running"}
@@ -195,7 +198,7 @@ function GameA() {
             key="winner-popup"
             className="absolute inset-0 z-50 flex items-center justify-center p-16"
             style={{
-              backgroundImage: `linear-gradient(rgba(0,0,0,0.72), rgba(0,0,0,0.82)), url(${
+              backgroundImage: `url(${
                 settings.giftBackground ?? DEFAULT_BG.spinWheelGift
               })`,
               backgroundSize: "cover",
@@ -206,38 +209,59 @@ function GameA() {
             exit={{ opacity: 0 }}
             onClick={() => setWinner(null)}
           >
-            <Confetti />
+            {winner.isPrize !== false && <Confetti />}
             <motion.div
               initial={{ scale: 0.5, y: 60, rotate: -6 }}
               animate={{ scale: 1, y: 0, rotate: 0 }}
               exit={{ scale: 0.6, opacity: 0 }}
               transition={{ type: "spring", stiffness: 200, damping: 18 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-2xl overflow-hidden rounded-[48px] border-4 border-gold bg-gradient-to-b from-brand-dark to-black p-16 text-center shadow-glow"
+              className="relative w-full max-w-2xl p-16 text-center"
             >
-              <p className="text-3xl font-bold uppercase tracking-[0.3em] text-gold">
-                {settings.popupTitle}
-              </p>
-              {winner.image && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={winner.image}
-                  alt={winner.name}
-                  className="mx-auto mt-8 h-56 w-56 rounded-3xl object-cover shadow-card"
-                />
-              )}
-              <p className="mt-8 text-3xl text-white/70">
-                {settings.popupSubtitle}
-              </p>
-              <h2 className="mt-2 text-7xl font-black uppercase text-white text-shadow">
-                {winner.name}
-              </h2>
-              {lastSpin && mode === "count" && (
-                <p className="mt-6 text-xl text-white/50">
-                  {winner.remainingWinners > 0
-                    ? `${winner.remainingWinners} remaining`
-                    : "Last one — now SOLD OUT!"}
-                </p>
+              {winner.isPrize !== false ? (
+                <>
+                  <p className="text-3xl font-bold uppercase tracking-[0.3em] text-gold text-shadow">
+                    {settings.popupTitle}
+                  </p>
+                  {winner.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={winner.image}
+                      alt={winner.name}
+                      className="mx-auto mt-8 h-56 w-56 rounded-3xl object-cover shadow-card"
+                    />
+                  )}
+                  <p className="mt-8 text-3xl text-white/80 text-shadow">
+                    {settings.popupSubtitle}
+                  </p>
+                  <h2 className="mt-2 text-7xl font-black uppercase text-white text-shadow">
+                    {winner.name}
+                  </h2>
+                  {lastSpin && mode === "count" && (
+                    <p className="mt-6 text-xl text-white/60 text-shadow">
+                      {winner.remainingWinners > 0
+                        ? `${winner.remainingWinners} remaining`
+                        : "Last one — now SOLD OUT!"}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h2 className="text-6xl font-black uppercase text-white text-shadow">
+                    {settings.losePopupTitle}
+                  </h2>
+                  {winner.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={winner.image}
+                      alt={winner.name}
+                      className="mx-auto mt-8 h-56 w-56 rounded-3xl object-cover shadow-card"
+                    />
+                  )}
+                  <p className="mt-8 text-3xl text-white/80 text-shadow">
+                    {settings.losePopupSubtitle}
+                  </p>
+                </>
               )}
               <button
                 onClick={() => setWinner(null)}

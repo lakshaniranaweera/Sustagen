@@ -128,6 +128,15 @@ function GameBAdmin() {
                 }
               />
             </Field>
+            <Field label="Start Button Text">
+              <input
+                className={inputCls}
+                value={settings.startButtonText}
+                onChange={(e) =>
+                  setSettings({ ...settings, startButtonText: e.target.value })
+                }
+              />
+            </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Success Message">
                 <input
