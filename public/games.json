@@ -1,0 +1,13 @@
+{
+  "_comment": "AUTO-GENERATED from games.build.json by the build. Lists games included in THIS build. Editing an enabled game to false here hides it at runtime (reload, no rebuild); it cannot re-enable a game that was build-excluded (its code isn't here).",
+  "games": [
+    {
+      "id": "game-a",
+      "enabled": true
+    },
+    {
+      "id": "game-b",
+      "enabled": true
+    }
+  ]
+}

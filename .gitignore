@@ -1,6 +1,7 @@
 node_modules
 .next
 out
+.build-excluded
 .env*.local
 # runtime data & uploads are persistent — keep them out of VCS but present at runtime
 /data

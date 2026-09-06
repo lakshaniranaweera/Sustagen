@@ -1,18 +1,22 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import PortraitStage from "@/components/PortraitStage";
 import { Spinner } from "@/components/ui";
-import { api, getState } from "@/lib/client";
+import { useAppState } from "@/lib/useAppState";
+import { useRequireGame } from "@/lib/games";
+import { newId } from "@/lib/store";
+import { DEFAULT_BG } from "@/lib/assets";
 import type { GameBSettings, CognitiveHit } from "@/lib/types";
 
 type Phase = "start" | "playing" | "result";
 
 export default function Page() {
-  const [settings, setSettings] = useState<GameBSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const gameReady = useRequireGame("game-b", "/");
   const [phase, setPhase] = useState<Phase>("start");
+  // Apply live admin changes only on the start screen.
+  const { state, loading, mutate } = useAppState(phase === "start");
+  const settings = state?.gameB ?? null;
   const [timeLeft, setTimeLeft] = useState(30);
   const [score, setScore] = useState(0);
   const [activeIdx, setActiveIdx] = useState(-1);
@@ -30,12 +34,6 @@ export default function Page() {
   const endAtRef = useRef(0);
 
   useEffect(() => {
-    getState()
-      .then((s) => {
-        setSettings(s.gameB);
-        setTimeLeft(s.gameB.durationSec);
-      })
-      .finally(() => setLoading(false));
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
       if (holdRef.current) clearTimeout(holdRef.current);
@@ -46,7 +44,7 @@ export default function Page() {
 
   const activateRandom = useCallback(
     (prev: number) => {
-      if (targets.length === 0) return;
+      if (!settings || targets.length === 0) return;
       let next = Math.floor(Math.random() * targets.length);
       if (targets.length > 1) {
         while (next === prev) next = Math.floor(Math.random() * targets.length);
@@ -54,10 +52,9 @@ export default function Page() {
       setActiveIdx(next);
       activatedAt.current = performance.now();
       if (holdRef.current) clearTimeout(holdRef.current);
-      if (settings && settings.activeHoldMs > 0) {
+      if (settings.activeHoldMs > 0) {
         holdRef.current = setTimeout(() => {
-          // missed — move on without scoring
-          activateRandom(next);
+          activateRandom(next); // missed — move on without scoring
         }, settings.activeHoldMs);
       }
     },
@@ -78,9 +75,16 @@ export default function Page() {
     setResult({ totalHits: hits.length, best, avg, passed });
     setPhase("result");
     try {
-      await api("/api/game-b/session", {
-        method: "POST",
-        body: JSON.stringify({ hits }),
+      await mutate((draft) => {
+        draft.sessions.push({
+          id: newId(),
+          createdAt: new Date().toISOString(),
+          totalHits: hits.length,
+          bestReactionMs: best,
+          avgReactionMs: avg,
+          passed,
+          hits,
+        });
       });
     } catch {
       /* non-blocking persistence */
@@ -116,7 +120,7 @@ export default function Page() {
     activateRandom(i);
   }
 
-  if (loading || !settings)
+  if (loading || !settings || !gameReady)
     return (
       <PortraitStage>
         <div className="flex h-full items-center justify-center">
@@ -126,16 +130,11 @@ export default function Page() {
     );
 
   return (
-    <PortraitStage background={settings.backgroundImage}>
-      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/85" />
-
-      <Link
-        href="/"
-        className="absolute left-8 top-8 z-40 rounded-full bg-white/10 px-6 py-3 text-xl font-bold text-white backdrop-blur hover:bg-white/25"
-      >
-        ← Home
-      </Link>
-
+    <PortraitStage
+      background={settings.backgroundImage ?? DEFAULT_BG.cognitive}
+      back="/"
+      fullscreen
+    >
       <div className="relative z-10 flex h-full flex-col items-center justify-center px-16">
         <AnimatePresence mode="wait">
           {phase === "start" && (
@@ -169,7 +168,7 @@ export default function Page() {
                 onClick={start}
                 className="mt-16 rounded-full bg-gradient-to-b from-cyan-400 to-blue-600 px-24 py-8 text-5xl font-black uppercase tracking-wider text-white shadow-glow"
               >
-                Start Game
+                {settings.startButtonText || "Start Game"}
               </motion.button>
               <p className="mt-10 text-2xl text-white/50">
                 Reach {settings.sharpMindScore}+ hits in {settings.durationSec}s
@@ -331,7 +330,7 @@ function ResultScreen({
         />
       </div>
 
-      <p className="mt-10 text-3xl font-semibold text-white/70">
+      <p className="mt-10 text-3xl font-semibold text-black/70">
         Final Result:{" "}
         <span className={result.passed ? "text-emerald-400" : "text-amber-400"}>
           {result.passed ? "PASSED" : "TRY AGAIN"}

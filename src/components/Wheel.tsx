@@ -1,6 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import type { WheelSegment } from "@/lib/types";
+import { defaultGiftImage } from "@/lib/assets";
 
 const SIZE = 900;
 const R = SIZE / 2;
@@ -23,21 +24,38 @@ function contrastText(hex: string): string {
   return lum > 0.6 ? "#111111" : "#ffffff";
 }
 
+export interface WheelStyle {
+  ringColorOuter?: string;
+  ringColorInner?: string;
+  pointerColor?: string;
+  hubBorderColor?: string;
+  centerText?: string;
+  centerTextColor?: string;
+}
+
 export default function Wheel({
   segments,
   rotation,
   duration,
   centerImage,
   spinning,
+  style,
 }: {
   segments: WheelSegment[];
   rotation: number;
   duration: number;
   centerImage: string | null;
   spinning: boolean;
+  style?: WheelStyle;
 }) {
   const N = Math.max(segments.length, 1);
   const slice = 360 / N;
+  const ringOuter = style?.ringColorOuter || "#7c3aed";
+  const ringInner = style?.ringColorInner || "#0a0a12";
+  const pointer = style?.pointerColor || "#f5c518";
+  const hubBorder = style?.hubBorderColor || "#ffffff";
+  const centerText = style?.centerText ?? "★";
+  const centerTextColor = style?.centerTextColor || "#ffffff";
 
   return (
     <div className="relative" style={{ width: "100%", aspectRatio: "1 / 1" }}>
@@ -46,8 +64,8 @@ export default function Wheel({
         <svg width="70" height="80" viewBox="0 0 70 80">
           <defs>
             <linearGradient id="ptr" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#fde68a" />
-              <stop offset="1" stopColor="#f5c518" />
+              <stop offset="0" stopColor="#ffffff" stopOpacity="0.6" />
+              <stop offset="1" stopColor={pointer} />
             </linearGradient>
           </defs>
           <path
@@ -61,8 +79,16 @@ export default function Wheel({
       </div>
 
       {/* Outer ring */}
-      <div className="absolute inset-0 rounded-full bg-gradient-to-b from-brand-light to-brand-dark p-[2.5%] shadow-glow">
-        <div className="relative h-full w-full rounded-full bg-[#0a0a12] p-[1.5%]">
+      <div
+        className="absolute inset-0 rounded-full p-[2.5%] shadow-glow"
+        style={{
+          background: `linear-gradient(to bottom, ${ringOuter}, ${ringInner})`,
+        }}
+      >
+        <div
+          className="relative h-full w-full rounded-full p-[1.5%]"
+          style={{ background: ringInner }}
+        >
           <motion.div
             className="h-full w-full"
             style={{ willChange: "transform" }}
@@ -105,19 +131,17 @@ export default function Wheel({
                       strokeWidth={2}
                       opacity={soldOut ? 0.4 : 1}
                     />
-                    {/* segment image */}
-                    {s.image && (
-                      <image
-                        href={s.image}
-                        x={imgPos.x - R * 0.16}
-                        y={imgPos.y - R * 0.16}
-                        width={R * 0.32}
-                        height={R * 0.32}
-                        clipPath={`url(#clip-${s.id})`}
-                        preserveAspectRatio="xMidYMid slice"
-                        opacity={soldOut ? 0.5 : 1}
-                      />
-                    )}
+                    {/* segment image — uploaded image, else per-gift default */}
+                    <image
+                      href={s.image ?? defaultGiftImage(s.order)}
+                      x={imgPos.x - R * 0.16}
+                      y={imgPos.y - R * 0.16}
+                      width={R * 0.32}
+                      height={R * 0.32}
+                      clipPath={`url(#clip-${s.id})`}
+                      preserveAspectRatio="xMidYMid slice"
+                      opacity={soldOut ? 0.5 : 1}
+                    />
                     {/* label */}
                     <g
                       transform={`translate(${labelPos.x} ${labelPos.y}) rotate(${mid})`}
@@ -158,8 +182,11 @@ export default function Wheel({
             </svg>
           </motion.div>
 
-          {/* Center hub / logo */}
-          <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 flex h-[22%] w-[22%] -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-4 border-white/80 bg-white shadow-lg">
+          {/* Center hub / logo or text */}
+          <div
+            className="pointer-events-none absolute left-1/2 top-1/2 z-20 flex h-[22%] w-[22%] -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-4 bg-white shadow-lg"
+            style={{ borderColor: hubBorder }}
+          >
             {centerImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -168,8 +195,11 @@ export default function Wheel({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand to-brand-dark text-3xl font-black text-white">
-                ★
+              <div
+                className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand to-brand-dark px-2 text-center text-2xl font-black leading-tight"
+                style={{ color: centerTextColor }}
+              >
+                {centerText || "★"}
               </div>
             )}
           </div>

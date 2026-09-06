@@ -1,0 +1,7 @@
+{
+  "_comment": "BUILD-TIME game gating (hard boundary). List every game with `enabled`. Disabled games are PHYSICALLY REMOVED from the build output by `npm run build` (no page, no code, real 404) and hidden from the landing/admin. Ids must match src/lib/games.ts folder names. To change which games a customer's kiosk has, edit this and rebuild. (public/games.json is regenerated from this file on each build for runtime hiding among the games that ARE built.)",
+  "games": [
+    { "id": "game-a", "enabled": true },
+    { "id": "game-b", "enabled": true }
+  ]
+}

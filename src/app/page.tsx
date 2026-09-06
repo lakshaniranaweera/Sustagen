@@ -1,23 +1,17 @@
 "use client";
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import PortraitStage from "@/components/PortraitStage";
-import { getState } from "@/lib/client";
-import type { LandingSettings } from "@/lib/types";
+import { useAppState } from "@/lib/useAppState";
+import { useEnabledGames, type GameEntry } from "@/lib/games";
 
 export default function Home() {
-  const [landing, setLanding] = useState<LandingSettings | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getState()
-      .then((s) => setLanding(s.landing))
-      .finally(() => setLoading(false));
-  }, []);
+  const { state, loading } = useAppState();
+  const { games } = useEnabledGames();
+  const landing = state?.landing ?? null;
 
   return (
-    <PortraitStage background={landing?.backgroundImage}>
+    <PortraitStage background={landing?.backgroundImage} fullscreen>
       {/* overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/80" />
 
@@ -59,24 +53,12 @@ export default function Home() {
         </motion.div>
 
         <div className="mt-24 flex w-full flex-col gap-10">
-          <GameCard
-            href="/game-a"
-            index={0}
-            emoji="🎡"
-            tag="GAME A"
-            title="SPIN THE WHEEL"
-            desc="Test your luck and win instant prizes"
-            gradient="from-violet-600 to-fuchsia-700"
-          />
-          <GameCard
-            href="/game-b"
-            index={1}
-            emoji="⚡"
-            tag="GAME B"
-            title="COGNITIVE TEST"
-            desc="The Agility Light Reflex Challenge"
-            gradient="from-cyan-500 to-blue-700"
-          />
+          {games.map((g, i) => (
+            <GameCard key={g.id} game={g} index={i} />
+          ))}
+          {!loading && games.length === 0 && (
+            <p className="text-2xl text-white/50">No games are available.</p>
+          )}
         </div>
 
         {loading && (
@@ -87,47 +69,31 @@ export default function Home() {
   );
 }
 
-function GameCard({
-  href,
-  index,
-  emoji,
-  tag,
-  title,
-  desc,
-  gradient,
-}: {
-  href: string;
-  index: number;
-  emoji: string;
-  tag: string;
-  title: string;
-  desc: string;
-  gradient: string;
-}) {
+function GameCard({ game, index }: { game: GameEntry; index: number }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 60 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 + index * 0.15, duration: 0.6 }}
     >
-      <Link href={href}>
+      <Link href={game.path}>
         <motion.div
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.98 }}
-          className={`group relative overflow-hidden rounded-[40px] bg-gradient-to-br ${gradient} p-1 shadow-card`}
+          className={`group relative overflow-hidden rounded-[40px] bg-gradient-to-br ${game.gradient} p-1 shadow-card`}
         >
           <div className="flex items-center gap-10 rounded-[36px] bg-black/40 px-14 py-14 backdrop-blur-sm">
             <div className="flex h-40 w-40 shrink-0 items-center justify-center rounded-3xl bg-white/10 text-8xl">
-              {emoji}
+              {game.emoji}
             </div>
             <div className="text-left">
               <span className="rounded-full bg-white/20 px-4 py-1 text-xl font-bold tracking-widest text-white">
-                {tag}
+                {game.tag}
               </span>
               <h2 className="mt-4 text-6xl font-black uppercase text-white text-shadow">
-                {title}
+                {game.name}
               </h2>
-              <p className="mt-3 text-2xl text-white/75">{desc}</p>
+              <p className="mt-3 text-2xl text-white/75">{game.description}</p>
             </div>
             <div className="ml-auto text-6xl text-white/60 transition group-hover:translate-x-2">
               →
