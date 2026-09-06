@@ -40,6 +40,17 @@ export default function Page() {
     };
   }, []);
 
+  // After results are shown, return to the game's own start screen (not the
+  // landing page) after 5 seconds.
+  useEffect(() => {
+    if (phase !== "result") return;
+    const t = window.setTimeout(() => {
+      setResult(null);
+      setPhase("start");
+    }, 5000);
+    return () => window.clearTimeout(t);
+  }, [phase]);
+
   const targets = settings?.targets || [];
 
   const activateRandom = useCallback(
@@ -153,7 +164,7 @@ export default function Page() {
                   className="mx-auto mb-10 h-40 w-40 rounded-3xl object-cover shadow-card"
                 />
               )}
-              <h1 className="gradient-text animate-shimmer text-8xl font-black uppercase text-shadow">
+              <h1 className="text-8xl font-black uppercase text-[#10214f] text-shadow">
                 {settings.title}
               </h1>
               <h2 className="mt-4 text-4xl font-bold uppercase tracking-widest text-cyan-300">
@@ -256,7 +267,7 @@ function ReactionPanel({
             className="relative flex h-64 w-64 items-center justify-center overflow-hidden rounded-full border-8 transition-colors"
             style={{
               background: active ? t.color : "rgba(255,255,255,0.06)",
-              borderColor: active ? "#ffffff" : "rgba(255,255,255,0.12)",
+              borderColor: "#000000",
               boxShadow: active ? `0 0 60px ${t.color}` : "none",
             }}
           >
