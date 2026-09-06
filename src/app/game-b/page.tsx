@@ -330,7 +330,7 @@ function ResultScreen({
         />
       </div>
 
-      <p className="mt-10 text-3xl font-semibold text-white/70">
+      <p className="mt-10 text-3xl font-semibold text-black/70">
         Final Result:{" "}
         <span className={result.passed ? "text-emerald-400" : "text-amber-400"}>
           {result.passed ? "PASSED" : "TRY AGAIN"}

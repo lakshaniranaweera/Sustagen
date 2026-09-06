@@ -8,7 +8,7 @@ import { useAppState } from "@/lib/useAppState";
 import { useRequireGame } from "@/lib/games";
 import { newId } from "@/lib/store";
 import { todayKey } from "@/lib/report";
-import { DEFAULT_BG } from "@/lib/assets";
+import { DEFAULT_BG, defaultGiftImage } from "@/lib/assets";
 import { eligibleSegments, pickWinner } from "@/lib/weighted";
 import type { WheelSegment, WheelSpin } from "@/lib/types";
 
@@ -178,7 +178,11 @@ function GameA() {
             onClick={spin}
             disabled={spinning || eligibleCount === 0 || settings.status !== "running"}
             whileTap={{ scale: 0.94 }}
-            className="relative h-32 w-96 rounded-full bg-gradient-to-b from-gold to-amber-500 text-5xl font-black uppercase tracking-wider text-amber-950 shadow-glow transition disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              background: settings.buttonColor,
+              color: settings.buttonTextColor,
+            }}
+            className="relative h-32 w-96 rounded-full text-5xl font-black uppercase tracking-wider shadow-glow transition disabled:cursor-not-allowed disabled:opacity-50"
           >
             {spinning ? "SPINNING…" : settings.buttonText || "SPIN"}
           </motion.button>
@@ -223,14 +227,15 @@ function GameA() {
                   <p className="text-3xl font-bold uppercase tracking-[0.3em] text-gold text-shadow">
                     {settings.popupTitle}
                   </p>
-                  {winner.image && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={winner.image}
-                      alt={winner.name}
-                      className="mx-auto mt-8 h-56 w-56 rounded-3xl object-cover shadow-card"
-                    />
-                  )}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={winner.image ?? defaultGiftImage(winner.order)}
+                    alt={winner.name}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                    className="mx-auto mt-8 h-56 w-56 rounded-3xl object-cover shadow-card"
+                  />
                   <p className="mt-8 text-3xl text-white/80 text-shadow">
                     {settings.popupSubtitle}
                   </p>
@@ -250,14 +255,15 @@ function GameA() {
                   <h2 className="text-6xl font-black uppercase text-white text-shadow">
                     {settings.losePopupTitle}
                   </h2>
-                  {winner.image && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={winner.image}
-                      alt={winner.name}
-                      className="mx-auto mt-8 h-56 w-56 rounded-3xl object-cover shadow-card"
-                    />
-                  )}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={winner.image ?? defaultGiftImage(winner.order)}
+                    alt={winner.name}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                    className="mx-auto mt-8 h-56 w-56 rounded-3xl object-cover shadow-card"
+                  />
                   <p className="mt-8 text-3xl text-white/80 text-shadow">
                     {settings.losePopupSubtitle}
                   </p>

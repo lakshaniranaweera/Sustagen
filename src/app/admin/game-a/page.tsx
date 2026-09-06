@@ -399,6 +399,16 @@ function GameAAdmin() {
             value={settings.hubBorderColor}
             onChange={(v) => setSettings({ ...settings, hubBorderColor: v })}
           />
+          <ColorField
+            label="Spin Button"
+            value={settings.buttonColor}
+            onChange={(v) => setSettings({ ...settings, buttonColor: v })}
+          />
+          <ColorField
+            label="Spin Button Text"
+            value={settings.buttonTextColor}
+            onChange={(v) => setSettings({ ...settings, buttonTextColor: v })}
+          />
         </div>
         <button
           onClick={saveSettings}
@@ -524,7 +534,7 @@ function GameAAdmin() {
                   />
                 </Field>
                 <ImageUploader
-                  label="Image"
+                  label="Image (overrides default)"
                   compact
                   value={s.image}
                   onChange={(url) => patchSeg(s.id, { image: url })}

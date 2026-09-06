@@ -57,6 +57,8 @@ export interface GameASettings {
   ringColorInner: string;
   pointerColor: string;
   hubBorderColor: string;
+  buttonColor: string; // spin button fill
+  buttonTextColor: string; // spin button label colour
   // Daily rollover
   dayStartHour: number; // 0-23, business-day boundary
   autoRollover: boolean; // reset remaining counts automatically at day boundary

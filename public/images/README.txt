@@ -9,3 +9,6 @@ no image is uploaded in the admin panel). Keep the same filenames.
 
 Admin uploads (per game) override these at runtime. Removing an uploaded image
 in admin reverts to the file here.
+
+Per-gift default images for the spin wheel live in spin-wheel/gifts/ — see the
+README in that folder for the gift-N.png naming convention.
