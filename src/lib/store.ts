@@ -77,7 +77,7 @@ export function defaultState(): AppState {
       wheelBackground: null,
       giftBackground: null,
       centerImage: null,
-      centerText: "★",
+      centerText: "Sustagen",
       centerTextColor: "#ffffff",
       spinDurationSec: 5,
       rotations: 6,

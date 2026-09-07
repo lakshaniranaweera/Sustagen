@@ -54,7 +54,7 @@ export default function Wheel({
   const ringInner = style?.ringColorInner || "#0a0a12";
   const pointer = style?.pointerColor || "#f5c518";
   const hubBorder = style?.hubBorderColor || "#ffffff";
-  const centerText = style?.centerText ?? "★";
+  const centerText = style?.centerText ?? "Sustagen";
   const centerTextColor = style?.centerTextColor || "#ffffff";
 
   return (
@@ -196,7 +196,7 @@ export default function Wheel({
           {/* Center hub / logo or text */}
           <div
             className="pointer-events-none absolute left-1/2 top-1/2 z-20 flex h-[22%] w-[22%] -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-4 bg-white shadow-lg"
-            style={{ borderColor: hubBorder }}
+            style={{ borderColor: hubBorder, containerType: "inline-size" }}
           >
             {centerImage ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -207,10 +207,17 @@ export default function Wheel({
               />
             ) : (
               <div
-                className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand to-brand-dark px-2 text-center text-2xl font-black leading-tight"
-                style={{ color: centerTextColor }}
+                className="flex h-full w-full items-center justify-center px-[6%] text-center font-black leading-none"
+                style={{
+                  color: centerTextColor,
+                  backgroundColor: "#4FC1E9", // light blue hub
+                  fontSize: "17cqw",
+                  whiteSpace: "nowrap",
+                  letterSpacing: "-0.02em",
+                  textShadow: "0 1px 2px rgba(0,0,0,0.35)",
+                }}
               >
-                {centerText || "★"}
+                {centerText || "Sustagen"}
               </div>
             )}
           </div>
