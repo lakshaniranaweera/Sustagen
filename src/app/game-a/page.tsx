@@ -19,7 +19,6 @@ function GameA() {
   const { state, loading, mutate, reload } = useAppState(!spinning);
   const [rotation, setRotation] = useState(0);
   const [winner, setWinner] = useState<WheelSegment | null>(null);
-  const [lastSpin, setLastSpin] = useState<WheelSpin | null>(null);
   const [error, setError] = useState<string | null>(null);
   const spinningRef = useRef(false);
 
@@ -106,7 +105,6 @@ function GameA() {
         draft.spins.push(recorded);
       });
       winSeg = next.segments.find((s) => s.id === winnerId) ?? null;
-      setLastSpin(recorded);
       setWinner(winSeg);
       setSpinning(false);
       spinningRef.current = false;
@@ -242,13 +240,6 @@ function GameA() {
                   <h2 className="mt-2 text-8xl font-black uppercase text-[#10214f] text-shadow">
                     {winner.name}
                   </h2>
-                  {lastSpin && mode === "count" && (
-                    <p className="mt-6 text-2xl text-[#10214f]/80 text-shadow">
-                      {winner.remainingWinners > 0
-                        ? `${winner.remainingWinners} remaining`
-                        : "Last one — now SOLD OUT!"}
-                    </p>
-                  )}
                 </>
               ) : (
                 <>
