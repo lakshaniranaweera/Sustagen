@@ -1,5 +1,7 @@
 // ---------- Shared domain types ----------
 
+import type { CognitiveLevelKey } from "./cognitive";
+
 export type CampaignStatus = "running" | "paused";
 
 // How the wheel picks a winner:
@@ -102,6 +104,7 @@ export interface CognitiveGameSession {
   bestReactionMs: number | null;
   avgReactionMs: number | null;
   passed: boolean;
+  level?: CognitiveLevelKey; // performance tier snapshot (absent on legacy sessions)
   hits: CognitiveHit[];
 }
 

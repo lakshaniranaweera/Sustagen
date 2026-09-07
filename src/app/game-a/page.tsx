@@ -234,7 +234,7 @@ function GameA() {
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
                     }}
-                    className="mx-auto mt-8 h-64 w-64 object-contain"
+                    className="mx-auto mt-8 h-80 w-80 object-contain"
                   />
                   <p className="mt-8 text-4xl text-[#10214f] text-shadow">
                     {settings.popupSubtitle}
@@ -262,7 +262,7 @@ function GameA() {
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
                     }}
-                    className="mx-auto mt-8 h-64 w-64 object-contain"
+                    className="mx-auto mt-8 h-80 w-80 object-contain"
                   />
                   <p className="mt-8 text-4xl text-[#10214f] text-shadow">
                     {settings.losePopupSubtitle}

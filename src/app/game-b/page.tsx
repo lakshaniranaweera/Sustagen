@@ -7,6 +7,7 @@ import { useAppState } from "@/lib/useAppState";
 import { useRequireGame } from "@/lib/games";
 import { newId } from "@/lib/store";
 import { DEFAULT_BG } from "@/lib/assets";
+import { cognitiveLevel, type CognitiveLevel } from "@/lib/cognitive";
 import type { GameBSettings, CognitiveHit } from "@/lib/types";
 
 type Phase = "start" | "playing" | "result";
@@ -24,7 +25,7 @@ export default function Page() {
     totalHits: number;
     best: number | null;
     avg: number | null;
-    passed: boolean;
+    level: CognitiveLevel;
   } | null>(null);
 
   const hitsRef = useRef<CognitiveHit[]>([]);
@@ -82,8 +83,9 @@ export default function Page() {
     const avg = times.length
       ? Math.round(times.reduce((a, b) => a + b, 0) / times.length)
       : null;
-    const passed = hits.length >= (settings?.sharpMindScore ?? 15);
-    setResult({ totalHits: hits.length, best, avg, passed });
+    const level = cognitiveLevel(hits.length, settings?.sharpMindScore ?? 15);
+    const passed = level.key === "excellent";
+    setResult({ totalHits: hits.length, best, avg, level });
     setPhase("result");
     try {
       await mutate((draft) => {
@@ -94,6 +96,7 @@ export default function Page() {
           bestReactionMs: best,
           avgReactionMs: avg,
           passed,
+          level: level.key,
           hits,
         });
       });
@@ -167,7 +170,7 @@ export default function Page() {
               <h1 className="text-8xl font-black uppercase text-[#10214f] text-shadow">
                 {settings.title}
               </h1>
-              <h2 className="mt-4 text-4xl font-bold uppercase tracking-widest text-cyan-300">
+              <h2 className="mt-4 text-4xl font-bold uppercase tracking-widest text-[#10214f]">
                 {settings.subtitle}
               </h2>
               <p className="mx-auto mt-10 max-w-2xl text-3xl italic text-white/75">
@@ -210,11 +213,7 @@ export default function Page() {
           )}
 
           {phase === "result" && result && (
-            <ResultScreen
-              settings={settings}
-              result={result}
-              onReplay={start}
-            />
+            <ResultScreen result={result} onReplay={start} />
           )}
         </AnimatePresence>
       </div>
@@ -295,19 +294,19 @@ function ReactionPanel({
 }
 
 function ResultScreen({
-  settings,
   result,
   onReplay,
 }: {
-  settings: GameBSettings;
   result: {
     totalHits: number;
     best: number | null;
     avg: number | null;
-    passed: boolean;
+    level: CognitiveLevel;
   };
   onReplay: () => void;
 }) {
+  const { level } = result;
+  const celebrate = level.key === "excellent" || level.key === "strong";
   return (
     <motion.div
       key="result"
@@ -316,18 +315,29 @@ function ResultScreen({
       exit={{ opacity: 0 }}
       className="w-full max-w-3xl text-center"
     >
+      <motion.div
+        initial={{ scale: 0.4, rotate: -8 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: "spring", stiffness: 200, damping: 12 }}
+        className="text-9xl"
+      >
+        {level.emoji}
+      </motion.div>
+
       <motion.h1
         initial={{ scale: 0.5 }}
         animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 200, damping: 12 }}
-        className={`text-8xl font-black uppercase text-shadow ${
-          result.passed ? "gradient-text animate-shimmer" : "text-white/80"
-        }`}
+        transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.05 }}
+        className={`mt-4 text-8xl font-black uppercase text-shadow ${level.colorClass}`}
       >
-        {result.passed ? settings.successMessage : settings.failMessage}
+        {level.label}
       </motion.h1>
 
-      {result.passed && <Celebrate />}
+      <p className="mt-6 text-4xl font-semibold text-black/70">
+        {level.description}
+      </p>
+
+      {celebrate && <Celebrate />}
 
       <div className="mt-14 grid grid-cols-3 gap-6">
         <ResultStat label="Total Hits" value={result.totalHits} />
@@ -340,13 +350,6 @@ function ResultScreen({
           value={result.avg != null ? `${result.avg}ms` : "—"}
         />
       </div>
-
-      <p className="mt-10 text-3xl font-semibold text-black/70">
-        Final Result:{" "}
-        <span className={result.passed ? "text-emerald-400" : "text-amber-400"}>
-          {result.passed ? "PASSED" : "TRY AGAIN"}
-        </span>
-      </p>
 
       <motion.button
         whileTap={{ scale: 0.94 }}

@@ -109,7 +109,7 @@ export function defaultState(): AppState {
       backgroundImage: null,
       logo: null,
       title: "COGNITIVE TEST",
-      subtitle: "THE AGILITY LIGHT REFLEX CHALLENGE",
+      subtitle: "THE COGNITIVE REFLEX CHALLENGE",
       description:
         "A fast-paced game that measures hand-eye coordination and reaction speed.",
       durationSec: 30,
@@ -130,9 +130,9 @@ export function defaultState(): AppState {
       dayStartHour: 0,
     },
     segments: [
-      seg("Grand Prize", "#7c3aed", 5, 5, 0),
-      seg("Free Coffee", "#ef4444", 20, 20, 1),
-      seg("10% OFF", "#f59e0b", 30, 30, 2),
+      seg("Cap", "#7c3aed", 5, 5, 0),
+      seg("Mug", "#ef4444", 20, 20, 1),
+      seg("T-shirt", "#f59e0b", 30, 30, 2),
       seg("Try Again", "#334155", 999, 40, 3, false),
     ],
     spins: [],

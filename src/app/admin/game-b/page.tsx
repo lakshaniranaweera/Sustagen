@@ -5,6 +5,7 @@ import ImageUploader from "@/components/ImageUploader";
 import { ConfirmDialog, useToast, Spinner } from "@/components/ui";
 import { loadState, mutateState, newId } from "@/lib/store";
 import { useRequireGame } from "@/lib/games";
+import { cognitiveLevel, cognitiveLevelByKey } from "@/lib/cognitive";
 import type { GameBSettings, CognitiveGameSession } from "@/lib/types";
 
 function GameBAdmin() {
@@ -372,13 +373,20 @@ function GameBAdmin() {
                     {s.avgReactionMs != null ? `${s.avgReactionMs}ms` : "—"}
                   </td>
                   <td className="px-3 py-2 text-center">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                        s.passed ? "bg-emerald-600" : "bg-white/15"
-                      }`}
-                    >
-                      {s.passed ? "SHARP" : "PRACTICE"}
-                    </span>
+                    {(() => {
+                      // Prefer the tier snapshot; fall back to deriving from the
+                      // hit count for legacy sessions saved before tiers existed.
+                      const lvl = s.level
+                        ? cognitiveLevelByKey(s.level)
+                        : cognitiveLevel(s.totalHits, settings.sharpMindScore);
+                      return (
+                        <span
+                          className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold ${lvl.badgeClass}`}
+                        >
+                          {lvl.emoji} {lvl.label}
+                        </span>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}
