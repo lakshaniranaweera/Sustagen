@@ -131,17 +131,28 @@ export default function Wheel({
                       strokeWidth={2}
                       opacity={soldOut ? 0.4 : 1}
                     />
-                    {/* segment image — uploaded image, else per-gift default */}
-                    <image
-                      href={s.image ?? defaultGiftImage(s.order)}
-                      x={imgPos.x - R * 0.16}
-                      y={imgPos.y - R * 0.16}
-                      width={R * 0.32}
-                      height={R * 0.32}
-                      clipPath={`url(#clip-${s.id})`}
-                      preserveAspectRatio="xMidYMid slice"
-                      opacity={soldOut ? 0.5 : 1}
-                    />
+                    {/* segment image — uploaded image, else per-gift default.
+                        Counter-rotate against the wheel so it stays upright. */}
+                    <g
+                      style={{
+                        transform: `rotate(${-rotation}deg)`,
+                        transformBox: "fill-box",
+                        transformOrigin: "center",
+                        transition: `transform ${spinning ? duration : 0}s cubic-bezier(0.12,0.7,0.1,1)`,
+                        willChange: "transform",
+                      }}
+                    >
+                      <image
+                        href={s.image ?? defaultGiftImage(s.order)}
+                        x={imgPos.x - R * 0.16}
+                        y={imgPos.y - R * 0.16}
+                        width={R * 0.32}
+                        height={R * 0.32}
+                        clipPath={`url(#clip-${s.id})`}
+                        preserveAspectRatio="xMidYMid slice"
+                        opacity={soldOut ? 0.5 : 1}
+                      />
+                    </g>
                     {/* label */}
                     <g
                       transform={`translate(${labelPos.x} ${labelPos.y}) rotate(${mid})`}
